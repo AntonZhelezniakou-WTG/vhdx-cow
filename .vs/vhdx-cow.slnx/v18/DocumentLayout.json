@@ -1,0 +1,359 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{12A9AEAD-5007-DEE4-25CF-1668DDBB0C64}|tests\\VhdxCow.Service.Tests\\VhdxCow.Service.Tests.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\tests\\vhdxcow.service.tests\\pathvalidatortests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{12A9AEAD-5007-DEE4-25CF-1668DDBB0C64}|tests\\VhdxCow.Service.Tests\\VhdxCow.Service.Tests.csproj|solutionrelative:tests\\vhdxcow.service.tests\\pathvalidatortests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{664DDD68-2B84-5C94-7806-7EBBDFCFCAF3}|tests\\VhdxCow.Integration.Tests\\VhdxCow.Integration.Tests.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\tests\\vhdxcow.integration.tests\\smoketests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{664DDD68-2B84-5C94-7806-7EBBDFCFCAF3}|tests\\VhdxCow.Integration.Tests\\VhdxCow.Integration.Tests.csproj|solutionrelative:tests\\vhdxcow.integration.tests\\smoketests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CCAA6AF6-1BBC-B86E-FC60-53C71CEA7667}|src\\VhdxCow.Cli\\VhdxCow.Cli.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.cli\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CCAA6AF6-1BBC-B86E-FC60-53C71CEA7667}|src\\VhdxCow.Cli\\VhdxCow.Cli.csproj|solutionrelative:src\\vhdxcow.cli\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\nativemethods.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\nativemethods.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\nativemethods.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\nativemethods.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\vhdxoperations\\vhdxmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\vhdxoperations\\vhdxmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\vhdxoperations\\volumemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\vhdxoperations\\volumemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\vhdxoperations\\ivolumemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\vhdxoperations\\ivolumemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\vhdxoperations\\ivhdxmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\vhdxoperations\\ivhdxmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\state\\mounteddiskstate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\state\\mounteddiskstate.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\state\\jsonstatestore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\state\\jsonstatestore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\state\\istatestore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\state\\istatestore.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\services\\vhdxgrpcservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\services\\vhdxgrpcservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.service\\security\\pathvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{64F9DBE8-09FE-76DF-5470-086716A2A941}|src\\VhdxCow.Service\\VhdxCow.Service.csproj|solutionrelative:src\\vhdxcow.service\\security\\pathvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B829D8A7-C9FB-5129-D496-7353316485D7}|src\\VhdxCow.Client\\VhdxCow.Client.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.client\\vhdxcowclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B829D8A7-C9FB-5129-D496-7353316485D7}|src\\VhdxCow.Client\\VhdxCow.Client.csproj|solutionrelative:src\\vhdxcow.client\\vhdxcowclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B829D8A7-C9FB-5129-D496-7353316485D7}|src\\VhdxCow.Client\\VhdxCow.Client.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.client\\namedpipechannelfactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B829D8A7-C9FB-5129-D496-7353316485D7}|src\\VhdxCow.Client\\VhdxCow.Client.csproj|solutionrelative:src\\vhdxcow.client\\namedpipechannelfactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{383ACD3F-F5A6-B829-6798-0F2F4194CBCA}|src\\VhdxCow.Contracts\\VhdxCow.Contracts.csproj|c:\\git\\github\\wisetechglobal\\personal\\vhdx-cow\\src\\vhdxcow.contracts\\protos\\vhdx_service.proto||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{383ACD3F-F5A6-B829-6798-0F2F4194CBCA}|src\\VhdxCow.Contracts\\VhdxCow.Contracts.csproj|solutionrelative:src\\vhdxcow.contracts\\protos\\vhdx_service.proto||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 20,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d84ee353-0bef-5a41-a649-8f89aca5d84d}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "SmokeTests.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\tests\\VhdxCow.Integration.Tests\\SmokeTests.cs",
+              "RelativeDocumentMoniker": "tests\\VhdxCow.Integration.Tests\\SmokeTests.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\tests\\VhdxCow.Integration.Tests\\SmokeTests.cs",
+              "RelativeToolTip": "tests\\VhdxCow.Integration.Tests\\SmokeTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:23:39.118Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Cli\\Program.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Cli\\Program.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Cli\\Program.cs",
+              "RelativeToolTip": "src\\VhdxCow.Cli\\Program.cs",
+              "ViewState": "AgIAAGcAAAAAAAAAAAAAABYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:23:02.489Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\Program.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\Program.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\Program.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:22:46.15Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "NativeMethods.txt",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\NativeMethods.txt",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\NativeMethods.txt",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\NativeMethods.txt",
+              "RelativeToolTip": "src\\VhdxCow.Service\\NativeMethods.txt",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2026-04-11T22:22:41.531Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\appsettings.json",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\appsettings.json",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\appsettings.json",
+              "RelativeToolTip": "src\\VhdxCow.Service\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-04-11T22:22:36.204Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "NativeMethods.json",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\NativeMethods.json",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\NativeMethods.json",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\NativeMethods.json",
+              "RelativeToolTip": "src\\VhdxCow.Service\\NativeMethods.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-04-11T22:22:34.388Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "VolumeManager.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\VolumeManager.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\VhdxOperations\\VolumeManager.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\VolumeManager.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\VhdxOperations\\VolumeManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:22:30.933Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "VhdxManager.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\VhdxManager.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\VhdxOperations\\VhdxManager.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\VhdxManager.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\VhdxOperations\\VhdxManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvyAAAAAbAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:22:04.976Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "IVolumeManager.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\IVolumeManager.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\VhdxOperations\\IVolumeManager.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\IVolumeManager.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\VhdxOperations\\IVolumeManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:22:01.835Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "IVhdxManager.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\IVhdxManager.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\VhdxOperations\\IVhdxManager.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\VhdxOperations\\IVhdxManager.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\VhdxOperations\\IVhdxManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:21:57.635Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "MountedDiskState.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\State\\MountedDiskState.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\State\\MountedDiskState.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\State\\MountedDiskState.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\State\\MountedDiskState.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:21:49.803Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "IStateStore.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\State\\IStateStore.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\State\\IStateStore.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\State\\IStateStore.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\State\\IStateStore.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvw4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:20:56.088Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "VhdxGrpcService.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\Services\\VhdxGrpcService.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\Services\\VhdxGrpcService.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\Services\\VhdxGrpcService.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\Services\\VhdxGrpcService.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAADwvxsAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:19:37.076Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "JsonStateStore.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\State\\JsonStateStore.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\State\\JsonStateStore.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\State\\JsonStateStore.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\State\\JsonStateStore.cs",
+              "ViewState": "AgIAAFcAAAAAAAAAAADwv1UAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:17:58.077Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "VhdxCowClient.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Client\\VhdxCowClient.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Client\\VhdxCowClient.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Client\\VhdxCowClient.cs",
+              "RelativeToolTip": "src\\VhdxCow.Client\\VhdxCowClient.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:17:57.965Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "PathValidator.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\Security\\PathValidator.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Service\\Security\\PathValidator.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Service\\Security\\PathValidator.cs",
+              "RelativeToolTip": "src\\VhdxCow.Service\\Security\\PathValidator.cs",
+              "ViewState": "AgIAACoAAAAAAAAAAADwvz0AAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:17:57.724Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "PathValidatorTests.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\tests\\VhdxCow.Service.Tests\\PathValidatorTests.cs",
+              "RelativeDocumentMoniker": "tests\\VhdxCow.Service.Tests\\PathValidatorTests.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\tests\\VhdxCow.Service.Tests\\PathValidatorTests.cs",
+              "RelativeToolTip": "tests\\VhdxCow.Service.Tests\\PathValidatorTests.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:17:57.597Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "NamedPipeChannelFactory.cs",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Client\\NamedPipeChannelFactory.cs",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Client\\NamedPipeChannelFactory.cs",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Client\\NamedPipeChannelFactory.cs",
+              "RelativeToolTip": "src\\VhdxCow.Client\\NamedPipeChannelFactory.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvxYAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-11T22:17:40.204Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "vhdx_service.proto",
+              "DocumentMoniker": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Contracts\\Protos\\vhdx_service.proto",
+              "RelativeDocumentMoniker": "src\\VhdxCow.Contracts\\Protos\\vhdx_service.proto",
+              "ToolTip": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Contracts\\Protos\\vhdx_service.proto",
+              "RelativeToolTip": "src\\VhdxCow.Contracts\\Protos\\vhdx_service.proto",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003853|",
+              "WhenOpened": "2026-04-11T22:17:15.279Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

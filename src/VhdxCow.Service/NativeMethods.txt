@@ -1,0 +1,14 @@
+CreateVirtualDisk
+OpenVirtualDisk
+AttachVirtualDisk
+DetachVirtualDisk
+GetVirtualDiskPhysicalPath
+GetVirtualDiskInformation
+MergeVirtualDisk
+SetVolumeMountPoint
+DeleteVolumeMountPoint
+GetVolumeNameForVolumeMountPoint
+GetVolumePathNamesForVolumeName
+FindFirstVolume
+FindNextVolume
+FindVolumeClose

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+		<PackageReference Include="Google.Protobuf" />
+		<PackageReference Include="Grpc.Net.Client" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="Protos\vhdx_service.proto" GrpcServices="Both" />
+	</ItemGroup>
+
+</Project>

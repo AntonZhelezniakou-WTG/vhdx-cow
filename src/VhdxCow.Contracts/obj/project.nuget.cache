@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "LXzzKROFU5Q=",
+  "success": true,
+  "projectFilePath": "C:\\git\\GitHub\\WiseTechGlobal\\Personal\\vhdx-cow\\src\\VhdxCow.Contracts\\VhdxCow.Contracts.csproj",
+  "expectedPackageFiles": [
+    "C:\\git\\Users\\SYSTEM\\.nuget\\packages\\google.protobuf\\3.29.3\\google.protobuf.3.29.3.nupkg.sha512",
+    "C:\\git\\Users\\SYSTEM\\.nuget\\packages\\grpc.core.api\\2.71.0\\grpc.core.api.2.71.0.nupkg.sha512",
+    "C:\\git\\Users\\SYSTEM\\.nuget\\packages\\grpc.net.client\\2.71.0\\grpc.net.client.2.71.0.nupkg.sha512",
+    "C:\\git\\Users\\SYSTEM\\.nuget\\packages\\grpc.net.common\\2.71.0\\grpc.net.common.2.71.0.nupkg.sha512",
+    "C:\\git\\Users\\SYSTEM\\.nuget\\packages\\grpc.tools\\2.71.0\\grpc.tools.2.71.0.nupkg.sha512",
+    "C:\\git\\Users\\SYSTEM\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\6.0.0\\microsoft.extensions.logging.abstractions.6.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
