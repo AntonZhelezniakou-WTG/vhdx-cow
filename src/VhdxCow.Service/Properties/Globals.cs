@@ -3,7 +3,8 @@ global using static VhdxCow.Service.Globals;
 namespace VhdxCow.Service;
 
 /// <summary>
-/// Win32 filesystem path length limits (winnt.h / fileapi.h).
+/// Global constants and statics for the VhdxCow Service.
+/// These are shared across multiple classes and don't belong to any specific class.
 /// </summary>
 static class Globals
 {
