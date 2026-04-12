@@ -6,6 +6,8 @@
     <Project Path="src/VhdxCow.Service/VhdxCow.Service.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/VhdxCow.Cli.Tests/VhdxCow.Cli.Tests.csproj" />
+    <Project Path="tests/VhdxCow.Client.Tests/VhdxCow.Client.Tests.csproj" />
     <Project Path="tests/VhdxCow.Integration.Tests/VhdxCow.Integration.Tests.csproj" />
     <Project Path="tests/VhdxCow.Service.Tests/VhdxCow.Service.Tests.csproj" />
   </Folder>

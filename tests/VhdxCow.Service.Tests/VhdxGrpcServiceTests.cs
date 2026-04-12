@@ -297,6 +297,56 @@ public class VhdxGrpcServiceTests
 		reply.ChildSizeBytes.Should().Be(2048);
 	}
 
+	// ─── ListMounts ─────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task ListMounts_NoMounts_ReturnsEmptyList()
+	{
+		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
+			.Returns(Array.Empty<MountedDiskState>());
+
+		var reply = await sut.ListMounts(new ListMountsRequest(), callContext);
+
+		reply.Mounts.Should().BeEmpty();
+	}
+
+	[Test]
+	public async Task ListMounts_WithMounts_ReturnsAllWithInfo()
+	{
+		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
+			.Returns(new[] { SomeState(@"C:\child1.vhdx"), SomeState(@"C:\child2.vhdx") });
+
+		vhdxManager.GetInfoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(new VhdxInfo(IsAttached: true, ParentPath: null, VirtualSize: 0, PhysicalSize: 512));
+
+		var reply = await sut.ListMounts(new ListMountsRequest(), callContext);
+
+		reply.Mounts.Should().HaveCount(2);
+		reply.Mounts[0].IsAttached.Should().BeTrue();
+		reply.Mounts[0].ChildSizeBytes.Should().Be(512);
+		reply.Mounts[1].IsAttached.Should().BeTrue();
+	}
+
+	[Test]
+	public async Task ListMounts_GetInfoThrowsForOne_StillReturnsAll()
+	{
+		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
+			.Returns(new[] { SomeState(@"C:\broken.vhdx"), SomeState(@"C:\ok.vhdx") });
+
+		vhdxManager.GetInfoAsync(@"C:\broken.vhdx", Arg.Any<CancellationToken>())
+			.Returns<VhdxInfo>(_ => throw new InvalidOperationException("disk gone"));
+		vhdxManager.GetInfoAsync(@"C:\ok.vhdx", Arg.Any<CancellationToken>())
+			.Returns(new VhdxInfo(IsAttached: true, ParentPath: null, VirtualSize: 0, PhysicalSize: 1024));
+
+		var reply = await sut.ListMounts(new ListMountsRequest(), callContext);
+
+		reply.Mounts.Should().HaveCount(2);
+		reply.Mounts[0].IsAttached.Should().BeFalse();
+		reply.Mounts[0].ChildSizeBytes.Should().Be(0);
+		reply.Mounts[1].IsAttached.Should().BeTrue();
+		reply.Mounts[1].ChildSizeBytes.Should().Be(1024);
+	}
+
 	// ─── Helpers ────────────────────────────────────────────────────────────
 
 	static MountedDiskState SomeState(string childPath) => new()

@@ -278,4 +278,40 @@ public sealed class VhdxGrpcService(
 			return new PublishReply { Success = false, ErrorMessage = ex.Message };
 		}
 	}
+
+	public override async Task<ListMountsReply> ListMounts(ListMountsRequest request, ServerCallContext context)
+	{
+		logger.LogDebug("ListMounts requested");
+
+		var allMounts = await stateStore.GetAllAsync(context.CancellationToken);
+		var reply = new ListMountsReply();
+
+		foreach (var mount in allMounts)
+		{
+			var info = new MountInfo
+			{
+				ChildVhdxPath = mount.ChildVhdxPath,
+				ParentVhdxPath = mount.ParentVhdxPath,
+				MountPath = mount.MountPath,
+				VolumeGuidPath = mount.VolumeGuidPath,
+			};
+
+			try
+			{
+				var vhdxInfo = await vhdxManager.GetInfoAsync(mount.ChildVhdxPath, context.CancellationToken);
+				info.IsAttached = vhdxInfo.IsAttached;
+				info.ChildSizeBytes = vhdxInfo.PhysicalSize;
+			}
+			catch (Exception ex)
+			{
+				logger.LogWarning(ex, "Failed to query info for {ChildPath}, marking as not attached", mount.ChildVhdxPath);
+				info.IsAttached = false;
+			}
+
+			reply.Mounts.Add(info);
+		}
+
+		logger.LogDebug("ListMounts returning {Count} mounts", reply.Mounts.Count);
+		return reply;
+	}
 }

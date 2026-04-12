@@ -20,7 +20,7 @@ try
 
 	builder.Services.AddWindowsService(options =>
 	{
-		options.ServiceName = "VhdxCowService";
+		options.ServiceName = ServiceConstants.ServiceName;
 	});
 
 	builder.Host.UseSerilog((context, config) =>
@@ -33,7 +33,7 @@ try
 		}
 	});
 
-	var pipeName = builder.Configuration.GetValue<string>("VhdxCow:PipeName") ?? "VhdxCowService";
+	var pipeName = builder.Configuration.GetValue<string>("VhdxCow:PipeName") ?? ServiceConstants.PipeName;
 
 	builder.WebHost.ConfigureKestrel(kestrel =>
 	{

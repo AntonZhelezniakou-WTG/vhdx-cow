@@ -14,7 +14,9 @@ public sealed class VolumeManager(ILogger<VolumeManager> logger) : IVolumeManage
 {
 	// IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS = CTL_CODE(IOCTL_VOLUME_BASE, 0, METHOD_BUFFERED, FILE_ANY_ACCESS)
 	// = (0x56 << 16) | 0 = 0x00560000
+	// ReSharper disable InconsistentNaming
 	const uint IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS = 0x00560000;
+	// ReSharper restore InconsistentNaming
 
 	public Task<string> GetVolumeGuidPathAsync(string physicalDiskPath, CancellationToken ct) => Task.Run(() =>
 	{
@@ -29,7 +31,7 @@ public sealed class VolumeManager(ILogger<VolumeManager> logger) : IVolumeManage
 
 		logger.LogInformation(
 			"Volume GUID discovered: {PhysicalDiskPath} -> {VolumeGuid}",
-				physicalDiskPath, volumeGuid);
+			physicalDiskPath, volumeGuid);
 
 		return volumeGuid;
 	}, ct);

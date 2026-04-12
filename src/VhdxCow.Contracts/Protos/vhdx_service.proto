@@ -25,6 +25,9 @@ service VhdxService {
 
 	// Health check / connectivity test.
 	rpc Ping (PingRequest) returns (PingReply);
+
+	// List all active mounts managed by the service.
+	rpc ListMounts (ListMountsRequest) returns (ListMountsReply);
 }
 
 message CreateChildRequest {
@@ -85,4 +88,20 @@ message PingRequest {
 message PingReply {
 	string version = 1;
 	uint32 active_mounts = 2;
+}
+
+message ListMountsRequest {
+}
+
+message ListMountsReply {
+	repeated MountInfo mounts = 1;
+}
+
+message MountInfo {
+	string child_vhdx_path = 1;
+	string parent_vhdx_path = 2;
+	string mount_path = 3;
+	string volume_guid_path = 4;
+	bool is_attached = 5;
+	uint64 child_size_bytes = 6;
 }

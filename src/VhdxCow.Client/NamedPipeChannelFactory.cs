@@ -6,7 +6,7 @@ namespace VhdxCow.Client;
 
 public static class NamedPipeChannelFactory
 {
-	public static GrpcChannel Create(string pipeName = "VhdxCowService")
+	public static GrpcChannel Create(string pipeName = ServiceConstants.PipeName)
 	{
 		var connectionFactory = new NamedPipeConnectionFactory(pipeName);
 		var socketsHttpHandler = new SocketsHttpHandler
