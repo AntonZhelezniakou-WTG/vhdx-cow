@@ -249,21 +249,6 @@ dotnet build installer/VhdxCow.Installer.wixproj -c Release -p:Version=1.0.0
 
 The SDK package (`WixToolset.Sdk`) is declared in the `.wixproj` and restored automatically by `dotnet build` — no separate WiX installation is required.
 
-### WiX support in Visual Studio
-
-The installer project uses `WixToolset.Sdk` which Visual Studio does not support out of the box. Without the extension, the project loads as `(incompatible)` in Solution Explorer but still builds correctly from the command line.
-
-To get full IDE support (syntax highlighting, IntelliSense for `.wxs` files, build integration):
-
-1. Open Visual Studio → **Extensions** → **Manage Extensions**
-2. Search for **HeatWave**
-3. Install **HeatWave for VS 2022** (works in VS 2022 and later)
-4. Restart Visual Studio
-
-Direct link: `https://marketplace.visualstudio.com/items?itemName=FireGiant.FireGiantHeatWaveDev17`
-
-After installation the project loads normally and the `(incompatible)` label disappears.
-
 ### Running tests
 
 ```powershell
