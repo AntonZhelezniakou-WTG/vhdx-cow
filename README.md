@@ -283,3 +283,15 @@ dotnet test vhdx-cow.slnx --filter "Category=Integration"
 - [Serilog](https://serilog.net/) — structured logging
 - [CsWin32](https://github.com/microsoft/CsWin32) — compile-time P/Invoke source generator
 - [NUnit](https://nunit.org/) · [NSubstitute](https://nsubstitute.github.io/) · [FluentAssertions](https://fluentassertions.com/) — testing
+
+---
+
+## License
+
+Copyright © 2026 WiseTech Global. All rights reserved.
+
+This repository is published for informational purposes only.
+No license is granted to use, copy, modify, distribute, or create derivative works from the code or other materials in this repository.
+
+The intellectual property rights in this repository belong to WiseTech Global.
+Use outside WiseTech Global is prohibited unless explicitly authorized in writing.
