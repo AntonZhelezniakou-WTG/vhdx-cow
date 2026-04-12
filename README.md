@@ -175,9 +175,9 @@ vhdx-cow publish --overlay D:\VhdxDisks\main-overlay.vhdx
 ## Typical Workflow
 
 ```
-                   ┌─────────────┐
-                   │  main build │  → artifacts written to main-overlay.vhdx
-                   └──────┬──────┘
+                    ┌─────────────┐
+                    │  main build │  → artifacts written to main-overlay.vhdx
+                    └──────┬──────┘
                            │  vhdx-cow publish --overlay main-overlay.vhdx
                            ▼
                    parent VHDX updated
