@@ -8,8 +8,10 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 {
 	readonly string[] allowedParentPaths
 		= configuration.GetSection("VhdxCow:AllowedParentPaths").Get<string[]>() ?? [];
+
 	readonly string[] allowedMountBasePaths
 		= configuration.GetSection("VhdxCow:AllowedMountBasePaths").Get<string[]>() ?? [];
+
 	readonly string[] allowedChildBasePaths
 		= configuration.GetSection("VhdxCow:AllowedChildBasePaths").Get<string[]>() ?? [];
 
@@ -69,7 +71,7 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 		error = $"The {pathType} path is not within any allowed directory";
 		logger.LogWarning(
 			"Path {Path} not in allowed {PathType} directories: [{AllowedDirs}]",
-			fullPath, pathType, string.Join(", ", allowedPaths));
+				fullPath, pathType, string.Join(", ", allowedPaths));
 		return false;
 	}
 }

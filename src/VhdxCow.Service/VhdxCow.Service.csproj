@@ -15,6 +15,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<AdditionalFiles Include="Native\NativeMethods.txt" />
+		<AdditionalFiles Include="Native\NativeMethods.json" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Update="Properties\appsettings.json" CopyToOutputDirectory="PreserveNewest" TargetPath="appsettings.json" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\VhdxCow.Contracts\VhdxCow.Contracts.csproj" />
 	</ItemGroup>
 

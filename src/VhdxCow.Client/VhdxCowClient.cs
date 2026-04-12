@@ -28,46 +28,36 @@ public sealed class VhdxCowClient : IDisposable
 		string childVhdxPath,
 		string mountPath,
 		CancellationToken ct = default)
-	{
-		return await client.CreateChildAsync(new CreateChildRequest
+		=> await client.CreateChildAsync(new CreateChildRequest
 		{
 			ParentVhdxPath = parentVhdxPath,
 			ChildVhdxPath = childVhdxPath,
 			MountPath = mountPath,
 		}, cancellationToken: ct);
-	}
 
 	public async Task<ResetChildReply> ResetChildAsync(string childVhdxPath, CancellationToken ct = default)
-	{
-		return await client.ResetChildAsync(new ResetChildRequest
+		=> await client.ResetChildAsync(new ResetChildRequest
 		{
 			ChildVhdxPath = childVhdxPath,
 		}, cancellationToken: ct);
-	}
 
 	public async Task<DetachReply> DetachAsync(string childVhdxPath, CancellationToken ct = default)
-	{
-		return await client.DetachAsync(new DetachRequest
+		=> await client.DetachAsync(new DetachRequest
 		{
 			ChildVhdxPath = childVhdxPath,
 		}, cancellationToken: ct);
-	}
 
 	public async Task<GetStatusReply> GetStatusAsync(string childVhdxPath, CancellationToken ct = default)
-	{
-		return await client.GetStatusAsync(new GetStatusRequest
+		=> await client.GetStatusAsync(new GetStatusRequest
 		{
 			ChildVhdxPath = childVhdxPath,
 		}, cancellationToken: ct);
-	}
 
 	public async Task<PublishReply> PublishAsync(string overlayVhdxPath, CancellationToken ct = default)
-	{
-		return await client.PublishAsync(new PublishRequest
+		=> await client.PublishAsync(new PublishRequest
 		{
 			OverlayVhdxPath = overlayVhdxPath,
 		}, cancellationToken: ct);
-	}
 
 	public void Dispose()
 	{

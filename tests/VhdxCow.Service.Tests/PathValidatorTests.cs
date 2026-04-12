@@ -1,7 +1,3 @@
-using FluentAssertions;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
-using NUnit.Framework;
 using VhdxCow.Service.Security;
 
 namespace VhdxCow.Service.Tests;
@@ -25,6 +21,8 @@ public class PathValidatorTests
 
 		return new PathValidator(config, NullLogger<PathValidator>.Instance);
 	}
+
+	// --- ValidateParentPath ---
 
 	[Test]
 	public void ValidateParentPath_WithinAllowedDirectory_ReturnsTrue()
@@ -71,5 +69,62 @@ public class PathValidatorTests
 
 		result.Should().BeFalse();
 		error.Should().Contain("No allowed");
+	}
+
+	// --- ValidateChildPath ---
+
+	[Test]
+	public void ValidateChildPath_WithinAllowedDirectory_ReturnsTrue()
+	{
+		var validator = CreateValidator();
+
+		var result = validator.ValidateChildPath(@"C:\VhdxDisks\Children\wt1.vhdx", out var error);
+
+		result.Should().BeTrue();
+		error.Should().BeEmpty();
+	}
+
+	[Test]
+	public void ValidateChildPath_OutsideAllowedDirectory_ReturnsFalse()
+	{
+		var validator = CreateValidator();
+
+		var result = validator.ValidateChildPath(@"C:\VhdxDisks\Parents\child.vhdx", out var error);
+
+		result.Should().BeFalse();
+		error.Should().Contain("not within any allowed directory");
+	}
+
+	[Test]
+	public void ValidateChildPath_EmptyPath_ReturnsFalse()
+	{
+		var validator = CreateValidator();
+
+		validator.ValidateChildPath("", out var error).Should().BeFalse();
+		error.Should().Contain("empty");
+	}
+
+	// --- ValidateMountPath ---
+
+	[Test]
+	public void ValidateMountPath_WithinAllowedDirectory_ReturnsTrue()
+	{
+		var validator = CreateValidator();
+
+		var result = validator.ValidateMountPath(@"C:\Mounts\worktree1\bin", out var error);
+
+		result.Should().BeTrue();
+		error.Should().BeEmpty();
+	}
+
+	[Test]
+	public void ValidateMountPath_OutsideAllowedDirectory_ReturnsFalse()
+	{
+		var validator = CreateValidator();
+
+		var result = validator.ValidateMountPath(@"C:\Windows\System32", out var error);
+
+		result.Should().BeFalse();
+		error.Should().Contain("not within any allowed directory");
 	}
 }

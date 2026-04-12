@@ -9,8 +9,8 @@ using VhdxCow.Service.State;
 using VhdxCow.Service.VhdxOperations;
 
 Log.Logger = new LoggerConfiguration()
-	.WriteTo.Console()
-	.CreateBootstrapLogger();
+		.WriteTo.Console()
+		.CreateBootstrapLogger();
 
 try
 {

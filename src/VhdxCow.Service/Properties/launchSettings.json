@@ -1,12 +1,12 @@
 {
-  "profiles": {
-    "VhdxCow.Service": {
-      "commandName": "Project",
-      "launchBrowser": true,
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "https://localhost:41554;http://localhost:41555"
-    }
-  }
+	"profiles": {
+		"VhdxCow.Service": {
+			"commandName": "Project",
+			"launchBrowser": true,
+			"environmentVariables": {
+				"ASPNETCORE_ENVIRONMENT": "Development"
+			},
+			"applicationUrl": "https://localhost:41554;http://localhost:41555"
+		}
+	}
 }

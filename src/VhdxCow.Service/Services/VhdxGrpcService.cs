@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using Grpc.Core;
 using VhdxCow.Contracts;
+using VhdxCow.Service.Security;
 using VhdxCow.Service.State;
 using VhdxCow.Service.VhdxOperations;
 
@@ -9,6 +11,7 @@ public sealed class VhdxGrpcService(
 	IVhdxManager vhdxManager,
 	IVolumeManager volumeManager,
 	IStateStore stateStore,
+	PathValidator pathValidator,
 	ILogger<VhdxGrpcService> logger) : VhdxService.VhdxServiceBase
 {
 	public override Task<PingReply> Ping(PingRequest request, ServerCallContext context)
@@ -24,33 +27,255 @@ public sealed class VhdxGrpcService(
 		return Task.FromResult(reply);
 	}
 
-	public override Task<CreateChildReply> CreateChild(CreateChildRequest request, ServerCallContext context)
+	public override async Task<CreateChildReply> CreateChild(CreateChildRequest request, ServerCallContext context)
 	{
-		logger.LogWarning("CreateChild not yet implemented");
-		throw new RpcException(new Status(StatusCode.Unimplemented, "CreateChild is not yet implemented"));
+		logger.LogInformation(
+			"CreateChild: Parent={ParentPath}, Child={ChildPath}, Mount={MountPath}",
+				request.ParentVhdxPath, request.ChildVhdxPath, request.MountPath);
+
+		if (!pathValidator.ValidateParentPath(request.ParentVhdxPath, out var parentError))
+			return new CreateChildReply { Success = false, ErrorMessage = parentError };
+
+		if (!pathValidator.ValidateChildPath(request.ChildVhdxPath, out var childError))
+			return new CreateChildReply { Success = false, ErrorMessage = childError };
+
+		if (!pathValidator.ValidateMountPath(request.MountPath, out var mountError))
+			return new CreateChildReply { Success = false, ErrorMessage = mountError };
+
+		if (!File.Exists(request.ParentVhdxPath))
+			return new CreateChildReply { Success = false, ErrorMessage = $"Parent VHDX not found: {request.ParentVhdxPath}" };
+
+		try
+		{
+			var sw = Stopwatch.StartNew();
+
+			// 1. Create differencing disk
+			await vhdxManager.CreateDifferencingDiskAsync(
+				request.ParentVhdxPath, request.ChildVhdxPath, context.CancellationToken);
+
+			// 2. Attach without drive letter, with permanent lifetime
+			var physicalPath = await vhdxManager.AttachAsync(
+				request.ChildVhdxPath, context.CancellationToken);
+
+			// 3. Discover volume GUID on the attached disk
+			var volumeGuidPath = await volumeManager.GetVolumeGuidPathAsync(
+				physicalPath, context.CancellationToken);
+
+			// 4. Mount volume to the target folder
+			await volumeManager.MountToFolderAsync(
+				volumeGuidPath, request.MountPath, context.CancellationToken);
+
+			// 5. Persist state
+			await stateStore.AddAsync(new MountedDiskState
+			{
+				ChildVhdxPath = request.ChildVhdxPath,
+				ParentVhdxPath = request.ParentVhdxPath,
+				MountPath = request.MountPath,
+				VolumeGuidPath = volumeGuidPath,
+			}, context.CancellationToken);
+
+			sw.Stop();
+			logger.LogInformation(
+				"CreateChild completed in {Duration}ms: {ChildPath} -> {MountPath}",
+					sw.ElapsedMilliseconds, request.ChildVhdxPath, request.MountPath);
+
+			return new CreateChildReply
+			{
+				Success = true,
+				VolumeGuidPath = volumeGuidPath,
+			};
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "CreateChild failed for {ChildPath}", request.ChildVhdxPath);
+			return new CreateChildReply { Success = false, ErrorMessage = ex.Message };
+		}
 	}
 
-	public override Task<ResetChildReply> ResetChild(ResetChildRequest request, ServerCallContext context)
+	public override async Task<ResetChildReply> ResetChild(ResetChildRequest request, ServerCallContext context)
 	{
-		logger.LogWarning("ResetChild not yet implemented");
-		throw new RpcException(new Status(StatusCode.Unimplemented, "ResetChild is not yet implemented"));
+		logger.LogInformation("ResetChild: {ChildPath}", request.ChildVhdxPath);
+
+		if (await stateStore.GetAsync(request.ChildVhdxPath, context.CancellationToken) is not {} state)
+			return new ResetChildReply { Success = false, ErrorMessage = $"No tracked mount for '{request.ChildVhdxPath}'" };
+
+		try
+		{
+			var sw = Stopwatch.StartNew();
+
+			// 1. Unmount from folder
+			await volumeManager.UnmountFolderAsync(state.MountPath, context.CancellationToken);
+
+			// 2. Detach the VHDX
+			await vhdxManager.DetachAsync(request.ChildVhdxPath, context.CancellationToken);
+
+			// 3. Delete the child VHDX file
+			File.Delete(request.ChildVhdxPath);
+
+			// 4. Recreate differencing disk from the same parent
+			await vhdxManager.CreateDifferencingDiskAsync(
+				state.ParentVhdxPath, request.ChildVhdxPath, context.CancellationToken);
+
+			// 5. Reattach
+			var physicalPath = await vhdxManager.AttachAsync(
+				request.ChildVhdxPath, context.CancellationToken);
+
+			// 6. Rediscover volume GUID (may differ after recreate)
+			var volumeGuidPath = await volumeManager.GetVolumeGuidPathAsync(
+				physicalPath, context.CancellationToken);
+
+			// 7. Remount to same folder
+			await volumeManager.MountToFolderAsync(
+				volumeGuidPath, state.MountPath, context.CancellationToken);
+
+			// 8. Update state
+			await stateStore.AddAsync(new MountedDiskState
+			{
+				ChildVhdxPath = request.ChildVhdxPath,
+				ParentVhdxPath = state.ParentVhdxPath,
+				MountPath = state.MountPath,
+				VolumeGuidPath = volumeGuidPath,
+			}, context.CancellationToken);
+
+			sw.Stop();
+			logger.LogInformation(
+				"ResetChild completed in {Duration}ms: {ChildPath}",
+					sw.ElapsedMilliseconds, request.ChildVhdxPath);
+
+			return new ResetChildReply { Success = true };
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "ResetChild failed for {ChildPath}", request.ChildVhdxPath);
+			return new ResetChildReply { Success = false, ErrorMessage = ex.Message };
+		}
 	}
 
-	public override Task<DetachReply> Detach(DetachRequest request, ServerCallContext context)
+	public override async Task<DetachReply> Detach(DetachRequest request, ServerCallContext context)
 	{
-		logger.LogWarning("Detach not yet implemented");
-		throw new RpcException(new Status(StatusCode.Unimplemented, "Detach is not yet implemented"));
+		logger.LogInformation("Detach: {ChildPath}", request.ChildVhdxPath);
+
+		var state = await stateStore.GetAsync(request.ChildVhdxPath, context.CancellationToken);
+		try
+		{
+			// 1. Unmount if we know the mount path
+			if (state is not null)
+			{
+				await volumeManager.UnmountFolderAsync(state.MountPath, context.CancellationToken);
+			}
+
+			// 2. Detach VHDX
+			await vhdxManager.DetachAsync(request.ChildVhdxPath, context.CancellationToken);
+
+			// 3. Delete the child file
+			if (File.Exists(request.ChildVhdxPath))
+			{
+				File.Delete(request.ChildVhdxPath);
+			}
+
+			// 4. Remove from state
+			await stateStore.RemoveAsync(request.ChildVhdxPath, context.CancellationToken);
+
+			logger.LogInformation("Detach completed: {ChildPath}", request.ChildVhdxPath);
+			return new DetachReply { Success = true };
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "Detach failed for {ChildPath}", request.ChildVhdxPath);
+			return new DetachReply { Success = false, ErrorMessage = ex.Message };
+		}
 	}
 
-	public override Task<GetStatusReply> GetStatus(GetStatusRequest request, ServerCallContext context)
+	public override async Task<GetStatusReply> GetStatus(GetStatusRequest request, ServerCallContext context)
 	{
-		logger.LogWarning("GetStatus not yet implemented");
-		throw new RpcException(new Status(StatusCode.Unimplemented, "GetStatus is not yet implemented"));
+		logger.LogDebug("GetStatus: {ChildPath}", request.ChildVhdxPath);
+
+		if (await stateStore.GetAsync(request.ChildVhdxPath, context.CancellationToken) is not {} state)
+		{
+			return new GetStatusReply { IsAttached = false };
+		}
+
+		var info = await vhdxManager.GetInfoAsync(request.ChildVhdxPath, context.CancellationToken);
+		return new GetStatusReply
+		{
+			IsAttached = info.IsAttached,
+			MountPath = state.MountPath,
+			ParentVhdxPath = state.ParentVhdxPath,
+			VolumeGuidPath = state.VolumeGuidPath,
+			ChildSizeBytes = info.PhysicalSize,
+		};
 	}
 
-	public override Task<PublishReply> Publish(PublishRequest request, ServerCallContext context)
+	public override async Task<PublishReply> Publish(PublishRequest request, ServerCallContext context)
 	{
-		logger.LogWarning("Publish not yet implemented");
-		throw new RpcException(new Status(StatusCode.Unimplemented, "Publish is not yet implemented"));
+		logger.LogInformation("Publish: merging overlay {OverlayPath}", request.OverlayVhdxPath);
+
+		try
+		{
+			var sw = Stopwatch.StartNew();
+
+			// 1. Get all active mounts — they'll need to be recreated
+			var allMounts = await stateStore.GetAllAsync(context.CancellationToken);
+
+			// 2. Detach all children (they reference the parent that will change)
+			foreach (var mount in allMounts)
+			{
+				await volumeManager.UnmountFolderAsync(mount.MountPath, context.CancellationToken);
+				await vhdxManager.DetachAsync(mount.ChildVhdxPath, context.CancellationToken);
+				File.Delete(mount.ChildVhdxPath);
+			}
+
+			// 3. Detach the overlay itself
+			await vhdxManager.DetachAsync(request.OverlayVhdxPath, context.CancellationToken);
+
+			// 4. Merge overlay into parent
+			await vhdxManager.MergeAsync(request.OverlayVhdxPath, context.CancellationToken);
+
+			// 5. Recreate overlay (it was deleted by merge)
+			// The caller is responsible for re-creating and re-attaching the overlay
+
+			// 6. Recreate and reattach all children
+			uint recreated = 0;
+			foreach (var mount in allMounts)
+			{
+				await vhdxManager.CreateDifferencingDiskAsync(
+					mount.ParentVhdxPath, mount.ChildVhdxPath, context.CancellationToken);
+
+				var physicalPath = await vhdxManager.AttachAsync(
+					mount.ChildVhdxPath, context.CancellationToken);
+
+				var volumeGuidPath = await volumeManager.GetVolumeGuidPathAsync(
+					physicalPath, context.CancellationToken);
+
+				await volumeManager.MountToFolderAsync(
+					volumeGuidPath, mount.MountPath, context.CancellationToken);
+
+				await stateStore.AddAsync(new MountedDiskState
+				{
+					ChildVhdxPath = mount.ChildVhdxPath,
+					ParentVhdxPath = mount.ParentVhdxPath,
+					MountPath = mount.MountPath,
+					VolumeGuidPath = volumeGuidPath,
+				}, context.CancellationToken);
+
+				recreated++;
+			}
+
+			sw.Stop();
+			logger.LogInformation(
+				"Publish completed in {Duration}ms: {ChildrenRecreated} children recreated",
+					sw.ElapsedMilliseconds, recreated);
+
+			return new PublishReply
+			{
+				Success = true,
+				ChildrenRecreated = recreated,
+			};
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "Publish failed for overlay {OverlayPath}", request.OverlayVhdxPath);
+			return new PublishReply { Success = false, ErrorMessage = ex.Message };
+		}
 	}
 }

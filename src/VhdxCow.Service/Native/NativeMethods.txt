@@ -12,3 +12,8 @@ GetVolumePathNamesForVolumeName
 FindFirstVolume
 FindNextVolume
 FindVolumeClose
+CreateFile
+DeviceIoControl
+IOCTL_STORAGE_GET_DEVICE_NUMBER
+STORAGE_DEVICE_NUMBER
+IOCTL_DISK_GET_DRIVE_LAYOUT_EX
