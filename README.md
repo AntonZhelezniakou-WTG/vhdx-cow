@@ -57,6 +57,35 @@ Attached disks use the `PERMANENT_LIFETIME` flag — mounts survive service rest
 
 ---
 
+## Installation
+
+### MSI installer (recommended)
+
+The MSI installer handles everything: service registration, CLI placement, PATH configuration, upgrade, and uninstall.
+
+```powershell
+# Silent install (requires elevation)
+msiexec /i VhdxCow-1.0.0.msi /qn
+
+# Interactive install
+msiexec /i VhdxCow-1.0.0.msi
+```
+
+After installation:
+- Service `VhdxCowService` is registered and started automatically (auto-start, LocalSystem)
+- CLI is placed in `C:\Program Files\VhdxCow\Cli\` and added to the system PATH
+- Default config is created at `%ProgramData%\VhdxCow\appsettings.json`
+
+**Upgrade**: run the new MSI — the old version is stopped and removed first, then the new one is installed.
+
+**Uninstall**: removes the service and CLI from PATH; `%ProgramData%\VhdxCow\` (config and logs) is preserved.
+
+```powershell
+msiexec /x VhdxCow-1.0.0.msi /qn
+```
+
+---
+
 ## Getting Started
 
 ### 1. Build
@@ -67,8 +96,12 @@ dotnet build vhdx-cow.slnx
 
 ### 2. Install the service
 
+#### Via MSI (see [Installation](#installation) above)
+
+#### Manually (for development)
+
 ```powershell
-# Publish a self-contained executable first
+# Publish first
 dotnet publish src/VhdxCow.Service/VhdxCow.Service.csproj -c Release -o publish/service
 
 # Install (requires elevation)
@@ -179,6 +212,16 @@ vhdx-cow/
 │   │   └── VhdxOperations/         # VhdxManager (P/Invoke), VolumeManager
 │   ├── VhdxCow.Client/             # IVhdxCowClient, VhdxCowClient, NamedPipeChannelFactory
 │   └── VhdxCow.Cli/                # CommandFactory, Program.cs
+├── installer/
+│   ├── VhdxCow.Installer.wixproj   # WiX v5 MSI project
+│   ├── Package.wxs                 # Package definition, directories, features
+│   ├── ServiceComponents.wxs       # Service install/control/recovery/EventSource
+│   ├── CliComponents.wxs           # CLI files + PATH environment variable
+│   └── ConfigComponents.wxs        # appsettings.json (NeverOverwrite) + logs dir
+├── winget/
+│   ├── WiseTechGlobal.VhdxCow.yaml
+│   ├── WiseTechGlobal.VhdxCow.installer.yaml
+│   └── WiseTechGlobal.VhdxCow.locale.en-US.yaml
 ├── tests/
 │   ├── VhdxCow.Service.Tests/      # Unit tests (NUnit, NSubstitute)
 │   ├── VhdxCow.Client.Tests/       # Client unit tests
@@ -187,6 +230,35 @@ vhdx-cow/
 └── scripts/
     └── Install-Service.ps1
 ```
+
+### Building the MSI
+
+```powershell
+# 1. Publish both components
+dotnet publish src/VhdxCow.Service -c Release --self-contained false -r win-x64 -o publish/service
+dotnet publish src/VhdxCow.Cli    -c Release --self-contained false -r win-x64 -o publish/cli
+
+# 2. Build the MSI
+dotnet build installer/VhdxCow.Installer.wixproj -c Release -p:Version=1.0.0
+# → installer/bin/Release/VhdxCow-1.0.0.msi
+```
+
+Requires [WiX Toolset v5](https://wixtoolset.org/) — the SDK package (`WixToolset.Sdk`) is declared in the `.wixproj` and restored automatically by `dotnet build`.
+
+### WiX support in Visual Studio
+
+The installer project uses `WixToolset.Sdk` which Visual Studio does not support out of the box. Without the extension, the project loads as `(incompatible)` in Solution Explorer but still builds correctly from the command line.
+
+To get full IDE support (syntax highlighting, IntelliSense for `.wxs` files, build integration):
+
+1. Open Visual Studio → **Extensions** → **Manage Extensions**
+2. Search for **HeatWave**
+3. Install **HeatWave for VS 2022** (works in VS 2022 and later)
+4. Restart Visual Studio
+
+Direct link: `https://marketplace.visualstudio.com/items?itemName=FireGiant.FireGiantHeatWaveDev17`
+
+After installation the project loads normally and the `(incompatible)` label disappears.
 
 ### Running tests
 

@@ -20,7 +20,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Update="Properties\appsettings.json" CopyToOutputDirectory="PreserveNewest" TargetPath="appsettings.json" />
+		<Content Update="Properties\appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" TargetPath="appsettings.json" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -377,3 +377,10 @@ nul
 tmpclaude-*-cwd
 .tmp-*
 
+# WiX installer output
+*.msi
+*.wixpdb
+
+# Publish output
+publish/
+

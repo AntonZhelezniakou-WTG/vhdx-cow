@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+	<Fragment>
+		<ComponentGroup Id="ConfigComponents">
+
+			<!-- Default appsettings.json in ProgramData — preserved across upgrades and uninstall -->
+			<Component Id="ConfigFileComponent"
+				Directory="ProgramDataVhdxCow"
+				NeverOverwrite="yes"
+				Permanent="yes"
+				Guid="C2F4A6B8-0D1E-3F5A-7B9C-2E4D6F8A0C1B">
+				<File
+					Id="AppSettingsJson"
+					Source="!(bindpath.ServicePublish)appsettings.json"
+					KeyPath="yes"
+					Name="appsettings.json" />
+			</Component>
+
+			<!-- Empty logs directory in ProgramData — preserved on uninstall -->
+			<Component Id="LogsDirectoryComponent"
+				Directory="ProgramDataLogs"
+				Permanent="yes"
+				Guid="D3E5A7C9-1F2B-4D6E-8A0C-3B5D7F9E1A2C"
+				KeyPath="yes">
+				<CreateFolder />
+			</Component>
+
+		</ComponentGroup>
+	</Fragment>
+
+</Wix>

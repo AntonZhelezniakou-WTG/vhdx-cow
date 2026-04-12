@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+	<Fragment>
+		<ComponentGroup Id="CliComponents" Directory="CliFolder">
+
+			<!-- All CLI files -->
+			<Files Include="!(bindpath.CliPublish)**">
+				<Exclude Files="!(bindpath.CliPublish)**\*.pdb" />
+			</Files>
+
+		</ComponentGroup>
+
+		<!-- System PATH entry for CLI directory -->
+		<Component Id="CliPathComponent" Directory="CliFolder"
+			Guid="A1D3E5F7-8B2C-4D6E-9A0F-1C3B5E7D9F2A">
+			<Environment
+				Id="CliPathEnv"
+				Name="PATH"
+				Value="[CliFolder]"
+				Permanent="no"
+				Part="last"
+				Action="set"
+				System="yes" />
+		</Component>
+	</Fragment>
+
+</Wix>
