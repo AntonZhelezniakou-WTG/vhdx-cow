@@ -98,6 +98,8 @@ dotnet build vhdx-cow.slnx
 
 #### Via MSI (see [Installation](#installation) above)
 
+The MSI is built separately from the main solution — see [Building the MSI](#building-the-msi).
+
 #### Manually (for development)
 
 ```powershell
@@ -233,6 +235,8 @@ vhdx-cow/
 
 ### Building the MSI
 
+The installer project (`installer/VhdxCow.Installer.wixproj`) is **not part of `vhdx-cow.slnx`** — it must be built separately from the command line. This is because `.wixproj` files require the [HeatWave](https://marketplace.visualstudio.com/items?itemName=FireGiant.FireGiantHeatWaveDev17) Visual Studio extension to load in the IDE, and the WiX v5 SDK is not supported by all Visual Studio configurations.
+
 ```powershell
 # 1. Publish both components
 dotnet publish src/VhdxCow.Service -c Release --self-contained false -r win-x64 -o publish/service
@@ -243,7 +247,7 @@ dotnet build installer/VhdxCow.Installer.wixproj -c Release -p:Version=1.0.0
 # → installer/bin/Release/VhdxCow-1.0.0.msi
 ```
 
-Requires [WiX Toolset v5](https://wixtoolset.org/) — the SDK package (`WixToolset.Sdk`) is declared in the `.wixproj` and restored automatically by `dotnet build`.
+The SDK package (`WixToolset.Sdk`) is declared in the `.wixproj` and restored automatically by `dotnet build` — no separate WiX installation is required.
 
 ### WiX support in Visual Studio
 
