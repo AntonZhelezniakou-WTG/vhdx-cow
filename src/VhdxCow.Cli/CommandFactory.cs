@@ -1,5 +1,6 @@
 using System.CommandLine;
 using VhdxCow.Client;
+using VhdxCow.Contracts;
 
 namespace VhdxCow.Cli;
 

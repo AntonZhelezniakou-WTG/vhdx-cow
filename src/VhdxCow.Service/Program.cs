@@ -3,6 +3,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
+using VhdxCow.Contracts;
 using VhdxCow.Service.Security;
 using VhdxCow.Service.Services;
 using VhdxCow.Service.State;

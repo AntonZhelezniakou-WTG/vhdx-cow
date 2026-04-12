@@ -1,6 +1,7 @@
 using System.IO.Pipes;
 using System.Security.Principal;
 using Grpc.Net.Client;
+using VhdxCow.Contracts;
 
 namespace VhdxCow.Client;
 
