@@ -4,6 +4,7 @@ using System.Security.Principal;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
 using VhdxCow.Contracts;
+using VhdxCow.Service.Diagnostics;
 using VhdxCow.Service.Security;
 using VhdxCow.Service.Services;
 using VhdxCow.Service.State;
@@ -46,6 +47,9 @@ try
 
 	builder.WebHost.UseNamedPipes(options =>
 	{
+		// Custom PipeSecurity is incompatible with the default CurrentUserOnly flag.
+		options.CurrentUserOnly = false;
+
 		var pipeSecurity = new PipeSecurity();
 		pipeSecurity.AddAccessRule(new PipeAccessRule(
 			new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),
@@ -68,7 +72,11 @@ try
 }
 catch (Exception ex)
 {
-	Log.Fatal(ex, "VhdxCow Service terminated unexpectedly");
+	// Write a self-contained fatal report (file + Event Log) BEFORE touching Serilog —
+	// host startup may have failed before Serilog sinks were ready.
+	var reportPath = FatalDiagnostics.Report(ex);
+
+	Log.Fatal(ex, "VhdxCow Service terminated unexpectedly. Fatal report: {ReportPath}", reportPath ?? "(write failed)");
 }
 finally
 {

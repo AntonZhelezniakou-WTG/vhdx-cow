@@ -15,27 +15,40 @@
 					Id="VhdxCowServiceInstall"
 					Name="VhdxCowService"
 					DisplayName="VHDX Copy-on-Write Service"
-					Description="Manages VHDX differencing disks for git worktree Copy-on-Write support"
+					Description="Manages VHDX differencing disks for Copy-on-Write workflows."
 					Type="ownProcess"
 					Start="auto"
 					Account="LocalSystem"
 					ErrorControl="normal"
 					Vital="yes" />
 
+				<!--
+					Wait="no": MSI fires the start request and moves on without blocking. If
+					the service crashes during startup (e.g. unhandled exception), the user
+					still sees our own crash-report dialog (spawned by FatalDiagnostics into
+					the active session), but MSI no longer surfaces its own "service failed
+					to start [Retry][Cancel]" loop, which previously triggered repeated
+					crashes and duplicated dialogs.
+				-->
 				<ServiceControl
 					Id="VhdxCowServiceControl"
 					Name="VhdxCowService"
 					Start="install"
 					Stop="both"
 					Remove="uninstall"
-					Wait="yes" />
+					Wait="no" />
 
+				<!--
+					Failure actions deliberately set to "none": when the service fails on
+					first start we want the user to see ONE crash-report dialog and decide
+					what to do, not have SCM silently restart the process and duplicate the
+					dialog every 60 seconds.
+				-->
 				<util:ServiceConfig
 					ServiceName="VhdxCowService"
-					FirstFailureActionType="restart"
-					SecondFailureActionType="restart"
+					FirstFailureActionType="none"
+					SecondFailureActionType="none"
 					ThirdFailureActionType="none"
-					RestartServiceDelayInSeconds="60"
 					ResetPeriodInDays="1" />
 
 				<!-- Event Log source registration -->
@@ -45,11 +58,11 @@
 					EventMessageFile="[#ServiceExe]" />
 			</Component>
 
-			<!-- All other service files (DLLs, deps.json, runtimeconfig.json, etc.) -->
+			<!-- All other service files (DLLs, deps.json, runtimeconfig.json, appsettings.json,
+			     CrashReportDialog.ps1, etc.) -->
 			<Files Include="!(bindpath.ServicePublish)**">
 				<Exclude Files="!(bindpath.ServicePublish)VhdxCow.Service.exe" />
 				<Exclude Files="!(bindpath.ServicePublish)**\*.pdb" />
-				<Exclude Files="!(bindpath.ServicePublish)appsettings.json" />
 			</Files>
 
 		</ComponentGroup>

@@ -2,7 +2,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
 	<Package
-		Name="VhdxCow"
+		Name="VHDX Copy-on-Write manager"
 		Manufacturer="WiseTechGlobal"
 		Version="$(var.Version)"
 		UpgradeCode="B7E4F9A2-3C1D-4E8F-A6B5-9D2C7E1F0A3B"
@@ -10,7 +10,7 @@
 		Compressed="yes">
 
 		<SummaryInformation
-			Description="VHDX Copy-on-Write for git worktrees on Windows" />
+			Description="VHDX Copy-on-Write manager for Windows" />
 
 		<MajorUpgrade
 			DowngradeErrorMessage="A newer version of [ProductName] is already installed."

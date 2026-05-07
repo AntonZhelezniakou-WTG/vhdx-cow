@@ -7,13 +7,18 @@ namespace VhdxCow.Service.Security;
 public sealed class PathValidator(IConfiguration configuration, ILogger<PathValidator> logger)
 {
 	readonly string[] allowedParentPaths
-		= configuration.GetSection("VhdxCow:AllowedParentPaths").Get<string[]>() ?? [];
+		= ExpandEnvVars(configuration.GetSection("VhdxCow:AllowedParentPaths").Get<string[]>());
 
 	readonly string[] allowedMountBasePaths
-		= configuration.GetSection("VhdxCow:AllowedMountBasePaths").Get<string[]>() ?? [];
+		= ExpandEnvVars(configuration.GetSection("VhdxCow:AllowedMountBasePaths").Get<string[]>());
 
 	readonly string[] allowedChildBasePaths
-		= configuration.GetSection("VhdxCow:AllowedChildBasePaths").Get<string[]>() ?? [];
+		= ExpandEnvVars(configuration.GetSection("VhdxCow:AllowedChildBasePaths").Get<string[]>());
+
+	static string[] ExpandEnvVars(string[]? values)
+		=> values is null
+			? []
+			: [.. values.Select(Environment.ExpandEnvironmentVariables)];
 
 	public bool ValidateParentPath(string path, out string error)
 		=> ValidateAgainstAllowList(path, allowedParentPaths, "parent VHDX", out error);
@@ -59,13 +64,9 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 			return false;
 		}
 
-		foreach (var allowed in allowedPaths)
+		if (allowedPaths.Select(Path.GetFullPath).Any(allowedFull => fullPath.StartsWith(allowedFull, StringComparison.OrdinalIgnoreCase)))
 		{
-			var allowedFull = Path.GetFullPath(allowed);
-			if (fullPath.StartsWith(allowedFull, StringComparison.OrdinalIgnoreCase))
-			{
-				return true;
-			}
+			return true;
 		}
 
 		error = $"The {pathType} path is not within any allowed directory";

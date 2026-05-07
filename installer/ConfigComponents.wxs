@@ -4,19 +4,6 @@
 	<Fragment>
 		<ComponentGroup Id="ConfigComponents">
 
-			<!-- Default appsettings.json in ProgramData — preserved across upgrades and uninstall -->
-			<Component Id="ConfigFileComponent"
-				Directory="ProgramDataVhdxCow"
-				NeverOverwrite="yes"
-				Permanent="yes"
-				Guid="C2F4A6B8-0D1E-3F5A-7B9C-2E4D6F8A0C1B">
-				<File
-					Id="AppSettingsJson"
-					Source="!(bindpath.ServicePublish)appsettings.json"
-					KeyPath="yes"
-					Name="appsettings.json" />
-			</Component>
-
 			<!-- Empty logs directory in ProgramData — preserved on uninstall -->
 			<Component Id="LogsDirectoryComponent"
 				Directory="ProgramDataLogs"
@@ -26,7 +13,44 @@
 				<CreateFolder />
 			</Component>
 
+			<!--
+				Installation diagnostics script.
+				Permanent="yes" so it survives a rollback caused by a failing install
+				step (e.g. service start failure). The Custom Action that runs this
+				script is scheduled in InstallUISequence after ExecuteAction; by then
+				the file is on disk regardless of whether the install succeeded.
+			-->
+			<Component Id="InstallDiagnosticsComponent"
+				Directory="ProgramDataVhdxCow"
+				Permanent="yes"
+				Guid="E5F7B9CB-2A3D-4F6E-9C0D-4F6E8A0B2C3D">
+				<File Id="InstallDiagnosticsPs1"
+					Source="$(var.ProjectDir)InstallDiagnostics.ps1"
+					KeyPath="yes"
+					Name="InstallDiagnostics.ps1" />
+			</Component>
+
 		</ComponentGroup>
+	</Fragment>
+
+	<Fragment>
+		<!--
+			Immediate Custom Action — runs in the active user session via msiexec UI
+			thread, so WinForms dialogs work. Schedule it in InstallUISequence so:
+			  * It only runs during interactive installs (silent /qn skips UISequence).
+			  * It runs AFTER ExecuteAction, i.e. after files are installed and the
+			    service start has been attempted, giving us the full picture.
+			Return="ignore" — diagnostic UI must never break the installer.
+		-->
+		<CustomAction Id="ShowInstallDiagnostics"
+			Directory="ProgramDataVhdxCow"
+			ExeCommand='powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "[CommonAppDataFolder]VhdxCow\InstallDiagnostics.ps1"'
+			Execute="immediate"
+			Return="ignore" />
+
+		<InstallUISequence>
+			<Custom Action="ShowInstallDiagnostics" After="ExecuteAction" Condition="NOT REMOVE" />
+		</InstallUISequence>
 	</Fragment>
 
 </Wix>

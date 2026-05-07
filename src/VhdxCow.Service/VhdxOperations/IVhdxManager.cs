@@ -35,7 +35,7 @@ public interface IVhdxManager
 	Task<VhdxInfo> GetInfoAsync(string vhdxPath, CancellationToken ct = default);
 }
 
-public record VhdxInfo(
+public readonly record struct VhdxInfo(
 	bool IsAttached,
 	string? ParentPath,
 	ulong VirtualSize,

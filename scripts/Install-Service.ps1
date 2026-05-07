@@ -26,7 +26,7 @@ param(
 
 $ServiceName = "VhdxCowService"
 $DisplayName = "VHDX Copy-on-Write Service"
-$Description = "Manages VHDX differencing disks for git worktree Copy-on-Write support"
+$Description = "Manages VHDX differencing disks for Copy-on-Write workflows."
 $EventLogSource = "VhdxCow"
 
 function Install-VhdxCowService {
