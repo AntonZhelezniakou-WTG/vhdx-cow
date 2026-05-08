@@ -51,10 +51,28 @@ try
 		options.CurrentUserOnly = false;
 
 		var pipeSecurity = new PipeSecurity();
+
+		// LocalSystem (the service account) MUST be in the DACL — otherwise
+		// CreateNamedPipe returns the handle to us with the requested access mask,
+		// the kernel checks SYSTEM against the DACL, finds no allow ACE, and fails
+		// with ERROR_ACCESS_DENIED. SYSTEM is not a member of BUILTIN\Users.
+		pipeSecurity.AddAccessRule(new PipeAccessRule(
+			new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
+			PipeAccessRights.FullControl,
+			AccessControlType.Allow));
+
+		// Administrators full control — for management/diagnostic clients running elevated.
+		pipeSecurity.AddAccessRule(new PipeAccessRule(
+			new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null),
+			PipeAccessRights.FullControl,
+			AccessControlType.Allow));
+
+		// Standard users get read+write so the CLI/Client can talk to the service.
 		pipeSecurity.AddAccessRule(new PipeAccessRule(
 			new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),
 			PipeAccessRights.ReadWrite,
 			AccessControlType.Allow));
+
 		options.PipeSecurity = pipeSecurity;
 	});
 

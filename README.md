@@ -131,27 +131,27 @@ The service rejects any request whose paths fall outside these allow-lists.
 
 ```powershell
 # Check connectivity
-vhdx-cow ping
+vhmgr ping
 
 # Mount a worktree's bin/ from a parent VHDX
-vhdx-cow init --parent D:\VhdxDisks\Parents\main.vhdx `
-              --child  D:\VhdxDisks\Children\wt1.vhdx `
-              --mount  D:\GitHub\myrepo-wt1\bin
+vhmgr init --parent D:\VhdxDisks\Parents\main.vhdx `
+           --child  D:\VhdxDisks\Children\wt1.vhdx `
+           --mount  D:\GitHub\myrepo-wt1\bin
 
 # List all active mounts
-vhdx-cow list
+vhmgr list
 
 # Discard worktree changes — restore to parent state
-vhdx-cow reset --child D:\VhdxDisks\Children\wt1.vhdx
+vhmgr reset --child D:\VhdxDisks\Children\wt1.vhdx
 
 # Show status of a specific mount
-vhdx-cow status --child D:\VhdxDisks\Children\wt1.vhdx
+vhmgr status --child D:\VhdxDisks\Children\wt1.vhdx
 
 # Detach and delete a worktree disk
-vhdx-cow cleanup --child D:\VhdxDisks\Children\wt1.vhdx
+vhmgr cleanup --child D:\VhdxDisks\Children\wt1.vhdx
 
 # Merge main overlay into parent and refresh all children
-vhdx-cow publish --overlay D:\VhdxDisks\main-overlay.vhdx
+vhmgr publish --overlay D:\VhdxDisks\main-overlay.vhdx
 ```
 
 #### Global options
@@ -178,7 +178,7 @@ vhdx-cow publish --overlay D:\VhdxDisks\main-overlay.vhdx
                     ┌─────────────┐
                     │  main build │  → artifacts written to main-overlay.vhdx
                     └──────┬──────┘
-                           │  vhdx-cow publish --overlay main-overlay.vhdx
+                           │  vhmgr publish --overlay main-overlay.vhdx
                            ▼
                    parent VHDX updated
                    all children recreated
@@ -248,6 +248,25 @@ dotnet build installer/VhdxCow.Installer.wixproj -c Release -p:Version=1.0.0
 ```
 
 The SDK package (`WixToolset.Sdk`) is declared in the `.wixproj` and restored automatically by `dotnet build` — no separate WiX installation is required.
+
+### Signing the MSI for development
+
+By default Windows displays an "Unknown publisher" UAC prompt for an unsigned MSI. To replace this with `Verified publisher: WiseTechGlobal` + `VHDX Copy-on-Write manager` on your dev box:
+
+```powershell
+# One-time per dev machine, requires admin elevation
+.\scripts\Setup-DevCodeSigning.ps1
+```
+
+This generates `installer/dev-cert.pfx` (gitignored) and trusts the cert in `LocalMachine\Root` + `LocalMachine\TrustedPublisher`. Subsequent MSI builds detect the PFX automatically and call `signtool sign` from the post-build target in [installer/VhdxCow.Installer.wixproj](installer/VhdxCow.Installer.wixproj).
+
+For production, override the properties when building:
+
+```powershell
+dotnet build installer/VhdxCow.Installer.wixproj -c Release `
+    /p:DevCertPath=path\to\real-codesign.pfx `
+    /p:DevCertPassword=$env:CODESIGN_PASSWORD
+```
 
 ### Running tests
 

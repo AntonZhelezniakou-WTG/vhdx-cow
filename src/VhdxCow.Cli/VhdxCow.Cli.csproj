@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
+		<AssemblyName>vhmgr</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -10,6 +11,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="System.CommandLine" />
+		<PackageReference Include="System.Diagnostics.EventLog" />
 	</ItemGroup>
 
 	<ItemGroup>

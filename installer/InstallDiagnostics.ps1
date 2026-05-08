@@ -277,7 +277,7 @@ try {
 	}
 	$btnSave = & $makeButton 'Save As...' 110 {
 		$sfd = New-Object System.Windows.Forms.SaveFileDialog
-		$sfd.FileName = "vhdx-cow-install-diag-$((Get-Date).ToString('yyyyMMdd-HHmmss')).log"
+		$sfd.FileName = "vhmgr-install-diag-$((Get-Date).ToString('yyyyMMdd-HHmmss')).log"
 		$sfd.Filter = 'Log files (*.log)|*.log|All files (*.*)|*.*'
 		$sfd.Title = 'Save VhdxCow installation diagnostic report'
 		if ($sfd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {

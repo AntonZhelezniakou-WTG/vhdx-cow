@@ -173,6 +173,7 @@ static class CommandFactory
 		rootCommand.Subcommands.Add(statusCommand);
 		rootCommand.Subcommands.Add(publishCommand);
 		rootCommand.Subcommands.Add(listCommand);
+		rootCommand.Subcommands.Add(LogsCommand.Create());
 
 		return rootCommand;
 	}

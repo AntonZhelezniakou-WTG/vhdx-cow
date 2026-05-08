@@ -43,7 +43,7 @@
 		</Feature>
 
 		<Feature Id="CliFeature"
-			Title="VhdxCow CLI"
+			Title="vhmgr CLI"
 			Description="Command-line tool (added to PATH)"
 			Level="1"
 			AllowAbsent="yes">

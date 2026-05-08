@@ -7,8 +7,14 @@
 
 			<!-- Service executable: explicit component for ServiceInstall metadata -->
 			<Component Id="ServiceExeComponent" Guid="*">
+				<!--
+					Name="..." is required: WiX 4/5 computes the installed file's name
+					from the literal Source string before bindpath resolution, so without
+					Name= the file lands as "!(bindpath.ServicePublish)VhdxCow.Service.exe".
+				-->
 				<File Id="ServiceExe"
 					Source="!(bindpath.ServicePublish)VhdxCow.Service.exe"
+					Name="VhdxCow.Service.exe"
 					KeyPath="yes" />
 
 				<ServiceInstall
