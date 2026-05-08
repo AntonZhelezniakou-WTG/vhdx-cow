@@ -180,17 +180,62 @@ static class LogsCommand
 
 	static DateTime ResolveServiceInstallTime()
 	{
-		// The service has no install timestamp anywhere obvious. We use the
-		// creation time of its EXE file (set by MSI when files are extracted),
-		// which is a reliable proxy.
+		// Primary: latest "A service was installed" (SCM event 7045) referencing our
+		// service in the System log. This reflects the LAST install precisely, even
+		// after multiple reinstalls.
+		var fromEventLog = TryFindLatestServiceInstallEvent();
+		if (fromEventLog.HasValue)
+		{
+			return fromEventLog.Value;
+		}
+
+		// Fallback: LastWriteTime of the service EXE (it gets rewritten on each
+		// install). NOT CreationTime — NTFS file tunneling preserves CreationTime
+		// across overwrites and would resolve to the FIRST install, not the latest.
 		var imagePath = TryGetServiceImagePath();
 		if (imagePath is not null && File.Exists(imagePath))
 		{
-			return File.GetCreationTimeUtc(imagePath);
+			return File.GetLastWriteTimeUtc(imagePath);
 		}
 
-		// Fallback: 24 hours ago. Better than throwing.
+		// Final fallback: 24 hours ago. Better than throwing.
 		return DateTime.UtcNow.AddDays(-1);
+	}
+
+	static DateTime? TryFindLatestServiceInstallEvent()
+	{
+		try
+		{
+			var xpath =
+				$"*[System[Provider[@Name='{ScmProvider}'] and EventID=7045]]";
+			var query = new EventLogQuery(SystemLogName, PathType.LogName, xpath);
+			using var reader = new EventLogReader(query);
+
+			DateTime? latest = null;
+			while (reader.ReadEvent() is { } record)
+			{
+				using (record)
+				{
+					var message = SafeFormat(record);
+					if (message is null || !MentionsService(message))
+					{
+						continue;
+					}
+
+					var time = (record.TimeCreated ?? DateTime.UtcNow).ToUniversalTime();
+					if (latest is null || time > latest)
+					{
+						latest = time;
+					}
+				}
+			}
+
+			return latest;
+		}
+		catch
+		{
+			return null;
+		}
 	}
 
 	static string? TryGetServiceImagePath()
