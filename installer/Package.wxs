@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+	xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
 
 	<Package
 		Name="VHDX Copy-on-Write manager"
@@ -50,6 +51,16 @@
 			<ComponentGroupRef Id="CliComponents" />
 			<ComponentRef Id="CliPathComponent" />
 		</Feature>
+
+		<!--
+			Built-in Welcome+License → Progress → Finish UI from the WiX UI extension.
+			Replaces the previous silent install flow. The Finish step shows
+			"Setup completed successfully" plus the optional text below.
+		-->
+		<ui:WixUI Id="WixUI_Minimal" />
+		<WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)license.rtf" />
+		<Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
+			Value="The VhdxCow service is registered and the 'vhmgr' CLI has been added to PATH. Open a new console and run 'vhmgr ping' to verify." />
 
 	</Package>
 
