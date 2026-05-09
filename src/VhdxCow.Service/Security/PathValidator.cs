@@ -3,6 +3,11 @@ namespace VhdxCow.Service.Security;
 /// <summary>
 /// Validates that requested paths are within configured allow-lists.
 /// Prevents path traversal attacks and restricts operations to approved directories.
+/// <para>
+/// If a list contains the single entry <c>"*"</c> all paths are accepted for that category
+/// (useful for single-user dev machines where the service is fully trusted).
+/// An empty list rejects all paths.
+/// </para>
 /// </summary>
 public sealed class PathValidator(IConfiguration configuration, ILogger<PathValidator> logger)
 {
@@ -68,6 +73,13 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 			logger.LogWarning("No allowed {PathType} paths configured — all paths are rejected", pathType);
 			error = $"No allowed {pathType} paths configured";
 			return false;
+		}
+
+		// "*" acts as a wildcard: accept any well-formed path with no directory restriction.
+		if (allowedPaths.Any(p => p == "*"))
+		{
+			logger.LogDebug("Allow-list for {PathType} contains wildcard — path accepted: {Path}", pathType, fullPath);
+			return true;
 		}
 
 		if (allowedPaths.Select(Path.GetFullPath).Any(allowedFull => fullPath.StartsWith(allowedFull, StringComparison.OrdinalIgnoreCase)))
