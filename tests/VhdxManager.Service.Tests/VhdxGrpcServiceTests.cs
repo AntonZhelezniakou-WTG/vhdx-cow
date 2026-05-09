@@ -1,0 +1,368 @@
+using Grpc.Core;
+using VhdxManager.Contracts;
+using VhdxManager.Service.Security;
+using VhdxManager.Service.Services;
+using VhdxManager.Service.State;
+using VhdxManager.Service.VhdxOperations;
+
+namespace VhdxManager.Service.Tests;
+
+[TestFixture]
+public class VhdxGrpcServiceTests
+{
+	IVirtDiskManager virtDiskManager = null!;
+	IVolumeManager volumeManager = null!;
+	IDiskInitializer diskInitializer = null!;
+	IFolderTransferOrchestrator folderTransferOrchestrator = null!;
+	IStateStore stateStore = null!;
+	PathValidator pathValidator = null!;
+	VhdxGrpcService sut = null!;
+	ServerCallContext callContext = null!;
+
+	const string AllowedParent = @"C:\Parents";
+	const string AllowedChild = @"C:\Children";
+	const string AllowedMount = @"C:\Mounts";
+
+	[SetUp]
+	public void SetUp()
+	{
+		virtDiskManager = Substitute.For<IVirtDiskManager>();
+		volumeManager = Substitute.For<IVolumeManager>();
+		diskInitializer = Substitute.For<IDiskInitializer>();
+		folderTransferOrchestrator = Substitute.For<IFolderTransferOrchestrator>();
+		stateStore = Substitute.For<IStateStore>();
+
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(new Dictionary<string, string?>
+			{
+				["VhdxManager:AllowedParentPaths:0"] = AllowedParent,
+				["VhdxManager:AllowedMountBasePaths:0"] = AllowedMount,
+				["VhdxManager:AllowedChildBasePaths:0"] = AllowedChild,
+			})
+			.Build();
+
+		pathValidator = new PathValidator(config, NullLogger<PathValidator>.Instance);
+		sut = new VhdxGrpcService(
+			virtDiskManager, volumeManager, diskInitializer, folderTransferOrchestrator,
+			stateStore, pathValidator,
+			NullLogger<VhdxGrpcService>.Instance);
+
+		callContext = Substitute.For<ServerCallContext>();
+		callContext.CancellationToken.Returns(CancellationToken.None);
+	}
+
+	// ─── Ping ───────────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task Ping_ReturnsMountCount()
+	{
+		stateStore.GetActiveMountCount().Returns(5);
+
+		var reply = await sut.Ping(new PingRequest(), callContext);
+
+		reply.ActiveMounts.Should().Be(5);
+	}
+
+	[Test]
+	public async Task Ping_ReturnsNonEmptyVersion()
+	{
+		var reply = await sut.Ping(new PingRequest(), callContext);
+
+		reply.Version.Should().NotBeNullOrEmpty();
+	}
+
+	// ─── CreateChild ────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task CreateChild_ParentPathNotAllowed_ReturnsFailure()
+	{
+		var reply = await sut.CreateChild(new CreateChildRequest
+		{
+			ParentVhdxPath = @"C:\Forbidden\parent.vhdx",
+			ChildVhdxPath = $@"{AllowedChild}\child.vhdx",
+			MountPath = $@"{AllowedMount}\wt1",
+		}, callContext);
+
+		reply.Success.Should().BeFalse();
+		reply.ErrorMessage.Should().Contain("parent VHDX");
+		await virtDiskManager.DidNotReceive().CreateDifferencingDiskAsync(
+			Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task CreateChild_ChildPathNotAllowed_ReturnsFailure()
+	{
+		var reply = await sut.CreateChild(new CreateChildRequest
+		{
+			ParentVhdxPath = $@"{AllowedParent}\parent.vhdx",
+			ChildVhdxPath = @"C:\Forbidden\child.vhdx",
+			MountPath = $@"{AllowedMount}\wt1",
+		}, callContext);
+
+		reply.Success.Should().BeFalse();
+		reply.ErrorMessage.Should().Contain("child VHDX");
+	}
+
+	[Test]
+	public async Task CreateChild_MountPathNotAllowed_ReturnsFailure()
+	{
+		var reply = await sut.CreateChild(new CreateChildRequest
+		{
+			ParentVhdxPath = $@"{AllowedParent}\parent.vhdx",
+			ChildVhdxPath = $@"{AllowedChild}\child.vhdx",
+			MountPath = @"C:\Forbidden\wt1",
+		}, callContext);
+
+		reply.Success.Should().BeFalse();
+		reply.ErrorMessage.Should().Contain("mount");
+	}
+
+	[Test]
+	public async Task CreateChild_ParentFileNotFound_ReturnsFailure()
+	{
+		// Paths are valid but the parent .vhdx file doesn't exist on disk
+		var reply = await sut.CreateChild(new CreateChildRequest
+		{
+			ParentVhdxPath = $@"{AllowedParent}\does-not-exist.vhdx",
+			ChildVhdxPath = $@"{AllowedChild}\child.vhdx",
+			MountPath = $@"{AllowedMount}\wt1",
+		}, callContext);
+
+		reply.Success.Should().BeFalse();
+		reply.ErrorMessage.Should().Contain("not found");
+	}
+
+	[Test]
+	public async Task CreateChild_VhdxManagerThrows_ReturnsFailure()
+	{
+		var parentFile = Path.GetTempFileName();
+		try
+		{
+			var config = new ConfigurationBuilder()
+				.AddInMemoryCollection(new Dictionary<string, string?>
+				{
+					["VhdxManager:AllowedParentPaths:0"] = Path.GetTempPath(),
+					["VhdxManager:AllowedMountBasePaths:0"] = Path.GetTempPath(),
+					["VhdxManager:AllowedChildBasePaths:0"] = Path.GetTempPath(),
+				})
+				.Build();
+			var service = new VhdxGrpcService(
+				virtDiskManager: virtDiskManager,
+				volumeManager: volumeManager,
+				diskInitializer: Substitute.For<IDiskInitializer>(),
+				folderTransferOrchestrator: Substitute.For<IFolderTransferOrchestrator>(),
+				stateStore: stateStore,
+				pathValidator: new PathValidator(config, NullLogger<PathValidator>.Instance),
+				logger: NullLogger<VhdxGrpcService>.Instance);
+
+			virtDiskManager
+				.CreateDifferencingDiskAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+				.Returns(Task.FromException(new InvalidOperationException("disk creation failed")));
+
+			var reply = await service.CreateChild(new CreateChildRequest
+			{
+				ParentVhdxPath = parentFile,
+				ChildVhdxPath = Path.Combine(Path.GetTempPath(), "child.vhdx"),
+				MountPath = Path.Combine(Path.GetTempPath(), "mount"),
+			}, callContext);
+
+			reply.Success.Should().BeFalse();
+			reply.ErrorMessage.Should().Contain("disk creation failed");
+		}
+		finally
+		{
+			File.Delete(parentFile);
+		}
+	}
+
+	// ─── ResetChild ─────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task ResetChild_NoTrackedState_ReturnsFailure()
+	{
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns((MountedDiskState?)null);
+
+		var reply = await sut.ResetChild(
+			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		reply.Success.Should().BeFalse();
+		reply.ErrorMessage.Should().Contain("No tracked mount");
+	}
+
+	[Test]
+	public async Task ResetChild_UnmountFails_ReturnsFailure()
+	{
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(SomeState(@"C:\child.vhdx"));
+
+		volumeManager
+			.UnmountFolderAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromException(new InvalidOperationException("unmount failed")));
+
+		var reply = await sut.ResetChild(
+			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		reply.Success.Should().BeFalse();
+		reply.ErrorMessage.Should().Contain("unmount failed");
+	}
+
+	[Test]
+	public async Task ResetChild_Success_ReattachesAndUpdatesState()
+	{
+		var state = SomeState(@"C:\child.vhdx");
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(state);
+		virtDiskManager.AttachAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(@"\\.\PhysicalDrive5");
+		volumeManager.GetVolumeGuidPathAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(@"\\?\Volume{new-guid}\");
+
+		var reply = await sut.ResetChild(
+			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		reply.Success.Should().BeTrue();
+		await stateStore.Received(1).AddAsync(
+			Arg.Is<MountedDiskState>(s => s.VolumeGuidPath == @"\\?\Volume{new-guid}\"),
+			Arg.Any<CancellationToken>());
+	}
+
+	// ─── Detach ─────────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task Detach_DetachFails_ReturnsFailure()
+	{
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns((MountedDiskState?)null);
+
+		virtDiskManager.DetachAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromException(new InvalidOperationException("detach failed")));
+
+		var reply = await sut.Detach(
+			new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		reply.Success.Should().BeFalse();
+		reply.ErrorMessage.Should().Contain("detach failed");
+	}
+
+	[Test]
+	public async Task Detach_WithState_UnmountsBeforeDetach()
+	{
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(SomeState(@"C:\child.vhdx"));
+
+		var reply = await sut.Detach(
+			new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		reply.Success.Should().BeTrue();
+		await volumeManager.Received(1).UnmountFolderAsync(
+			Arg.Any<string>(), Arg.Any<CancellationToken>());
+		await virtDiskManager.Received(1).DetachAsync(
+			Arg.Any<string>(), Arg.Any<CancellationToken>());
+		await stateStore.Received(1).RemoveAsync(
+			Arg.Any<string>(), Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task Detach_WithoutState_SkipsUnmount()
+	{
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns((MountedDiskState?)null);
+
+		await sut.Detach(new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		await volumeManager.DidNotReceive().UnmountFolderAsync(
+			Arg.Any<string>(), Arg.Any<CancellationToken>());
+	}
+
+	// ─── GetStatus ──────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task GetStatus_NoTrackedState_ReturnsNotAttached()
+	{
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns((MountedDiskState?)null);
+
+		var reply = await sut.GetStatus(
+			new GetStatusRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		reply.IsAttached.Should().BeFalse();
+	}
+
+	[Test]
+	public async Task GetStatus_HasState_ReturnsStoredPaths()
+	{
+		var state = SomeState(@"C:\child.vhdx");
+		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(state);
+		virtDiskManager.GetInfoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(new VhdxInfo(IsAttached: true, ParentPath: null, VirtualSize: 0, PhysicalSize: 2048));
+
+		var reply = await sut.GetStatus(
+			new GetStatusRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+
+		reply.IsAttached.Should().BeTrue();
+		reply.MountPath.Should().Be(state.MountPath);
+		reply.ParentVhdxPath.Should().Be(state.ParentVhdxPath);
+		reply.VolumeGuidPath.Should().Be(state.VolumeGuidPath);
+		reply.ChildSizeBytes.Should().Be(2048);
+	}
+
+	// ─── ListMounts ─────────────────────────────────────────────────────────
+
+	[Test]
+	public async Task ListMounts_NoMounts_ReturnsEmptyList()
+	{
+		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
+			.Returns([]);
+
+		var reply = await sut.ListMounts(new ListMountsRequest(), callContext);
+
+		reply.Mounts.Should().BeEmpty();
+	}
+
+	[Test]
+	public async Task ListMounts_WithMounts_ReturnsAllWithInfo()
+	{
+		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
+			.Returns([SomeState(@"C:\child1.vhdx"), SomeState(@"C:\child2.vhdx")]);
+
+		virtDiskManager.GetInfoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(new VhdxInfo(IsAttached: true, ParentPath: null, VirtualSize: 0, PhysicalSize: 512));
+
+		var reply = await sut.ListMounts(new ListMountsRequest(), callContext);
+
+		reply.Mounts.Should().HaveCount(2);
+		reply.Mounts[0].IsAttached.Should().BeTrue();
+		reply.Mounts[0].ChildSizeBytes.Should().Be(512);
+		reply.Mounts[1].IsAttached.Should().BeTrue();
+	}
+
+	[Test]
+	public async Task ListMounts_GetInfoThrowsForOne_StillReturnsAll()
+	{
+		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
+			.Returns([SomeState(@"C:\broken.vhdx"), SomeState(@"C:\ok.vhdx")]);
+
+		virtDiskManager.GetInfoAsync(@"C:\broken.vhdx", Arg.Any<CancellationToken>())
+			.Returns<VhdxInfo>(_ => throw new InvalidOperationException("disk gone"));
+		virtDiskManager.GetInfoAsync(@"C:\ok.vhdx", Arg.Any<CancellationToken>())
+			.Returns(new VhdxInfo(IsAttached: true, ParentPath: null, VirtualSize: 0, PhysicalSize: 1024));
+
+		var reply = await sut.ListMounts(new ListMountsRequest(), callContext);
+
+		reply.Mounts.Should().HaveCount(2);
+		reply.Mounts[0].IsAttached.Should().BeFalse();
+		reply.Mounts[0].ChildSizeBytes.Should().Be(0);
+		reply.Mounts[1].IsAttached.Should().BeTrue();
+		reply.Mounts[1].ChildSizeBytes.Should().Be(1024);
+	}
+
+	// ─── Helpers ────────────────────────────────────────────────────────────
+
+	static MountedDiskState SomeState(string childPath) => new()
+	{
+		ChildVhdxPath = childPath,
+		ParentVhdxPath = @"C:\parent.vhdx",
+		MountPath = @"C:\mount\wt1",
+		VolumeGuidPath = @"\\?\Volume{abcd}\",
+	};
+}

@@ -10,18 +10,18 @@
 				<!--
 					Name="..." is required: WiX 4/5 computes the installed file's name
 					from the literal Source string before bindpath resolution, so without
-					Name= the file lands as "!(bindpath.ServicePublish)VhdxCow.Service.exe".
+					Name= the file lands as "!(bindpath.ServicePublish)VhdxManager.Service.exe".
 				-->
 				<File Id="ServiceExe"
-					Source="!(bindpath.ServicePublish)VhdxCow.Service.exe"
-					Name="VhdxCow.Service.exe"
+					Source="!(bindpath.ServicePublish)VhdxManager.Service.exe"
+					Name="VhdxManager.Service.exe"
 					KeyPath="yes" />
 
 				<ServiceInstall
-					Id="VhdxCowServiceInstall"
-					Name="VhdxCowService"
-					DisplayName="VHDX Copy-on-Write Service"
-					Description="Manages VHDX differencing disks for Copy-on-Write workflows."
+					Id="VhdxManagerServiceInstall"
+					Name="VhdxManagerService"
+					DisplayName="VHDX Manager Service"
+					Description="Manages VHDX virtual disks (create, attach, mount, merge)."
 					Type="ownProcess"
 					Start="auto"
 					Account="LocalSystem"
@@ -37,8 +37,8 @@
 					crashes and duplicated dialogs.
 				-->
 				<ServiceControl
-					Id="VhdxCowServiceControl"
-					Name="VhdxCowService"
+					Id="VhdxManagerServiceControl"
+					Name="VhdxManagerService"
 					Start="install"
 					Stop="both"
 					Remove="uninstall"
@@ -51,7 +51,7 @@
 					dialog every 60 seconds.
 				-->
 				<util:ServiceConfig
-					ServiceName="VhdxCowService"
+					ServiceName="VhdxManagerService"
 					FirstFailureActionType="none"
 					SecondFailureActionType="none"
 					ThirdFailureActionType="none"
@@ -59,7 +59,7 @@
 
 				<!-- Event Log source registration -->
 				<util:EventSource
-					Name="VhdxCow"
+					Name="VhdxManager"
 					Log="Application"
 					EventMessageFile="[#ServiceExe]" />
 			</Component>
@@ -67,7 +67,7 @@
 			<!-- All other service files (DLLs, deps.json, runtimeconfig.json, appsettings.json,
 			     CrashReportDialog.ps1, etc.) -->
 			<Files Include="!(bindpath.ServicePublish)**">
-				<Exclude Files="!(bindpath.ServicePublish)VhdxCow.Service.exe" />
+				<Exclude Files="!(bindpath.ServicePublish)VhdxManager.Service.exe" />
 				<Exclude Files="!(bindpath.ServicePublish)**\*.pdb" />
 			</Files>
 

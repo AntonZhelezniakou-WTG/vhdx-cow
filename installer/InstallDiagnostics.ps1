@@ -1,7 +1,7 @@
 #Requires -Version 5
 <#
 .SYNOPSIS
-    Post-install diagnostic dialog for the VhdxCow MSI installer.
+    Post-install diagnostic dialog for the VhdxManager MSI installer.
 
     Invoked by an immediate Custom Action in InstallUISequence after ExecuteAction
     completes. Detects whether the installation produced any visible problems —
@@ -20,8 +20,8 @@
 
 $ErrorActionPreference = 'Stop'
 
-$serviceName = 'VhdxCowService'
-$logsDir = Join-Path $env:ProgramData 'VhdxCow\logs'
+$serviceName = 'VhdxManagerService'
+$logsDir = Join-Path $env:ProgramData 'VhdxManager\logs'
 $cutoff = (Get-Date).AddMinutes(-5)
 
 # Errors encountered while collecting diagnostic data. Surfaced to the user, not hidden.
@@ -98,7 +98,7 @@ try {
 			StartTime = $cutoff
 			Level     = @(1, 2, 3)
 		} -ErrorAction Stop | Where-Object {
-			$_.ProviderName -eq 'VhdxCow' -or
+			$_.ProviderName -eq 'VhdxManager' -or
 			$_.ProviderName -eq '.NET Runtime' -or
 			$_.ProviderName -eq 'Application Error' -or
 			($_.ProviderName -eq 'Service Control Manager' -and $_.Message -match $serviceName)
@@ -114,7 +114,8 @@ try {
 			ProviderName = 'Service Control Manager'
 			Level        = @(1, 2, 3)
 		} -ErrorAction Stop | Where-Object {
-			$_.Message -match $serviceName -or $_.Message -match 'VhdxCow'
+			$_.Message -match $serviceName -or
+			$_.Message -match 'VhdxManager'
 		}
 	}
 	if ($null -eq $sysEvents) { $sysEvents = @() }
@@ -152,7 +153,7 @@ try {
 
 	# ---------- 6) Build the human-readable diagnostic report ----------
 	$sb = New-Object System.Text.StringBuilder
-	[void]$sb.AppendLine('VhdxCow installation diagnostic report')
+	[void]$sb.AppendLine('VhdxManager installation diagnostic report')
 	[void]$sb.AppendLine('========================================')
 	[void]$sb.AppendLine("Generated:        $((Get-Date).ToString('o'))")
 	[void]$sb.AppendLine("Computer:         $env:COMPUTERNAME")
@@ -217,20 +218,20 @@ try {
 		[void]$sb.AppendLine()
 	}
 
-	[void]$sb.AppendLine('Please save this report and open an issue with the VhdxCow maintainers, attaching the saved file.')
+	[void]$sb.AppendLine('Please save this report and open an issue with the VhdxManager maintainers, attaching the saved file.')
 
 	$reportText = $sb.ToString()
 
 	# ---------- 7) Show the dialog ----------
 	$form = New-Object System.Windows.Forms.Form
-	$form.Text = 'VhdxCow installation — diagnostic report'
+	$form.Text = 'VhdxManager installation — diagnostic report'
 	$form.Size = New-Object System.Drawing.Size(960, 680)
 	$form.StartPosition = 'CenterScreen'
 	$form.MinimumSize = New-Object System.Drawing.Size(600, 400)
 	$form.TopMost = $true
 
 	$summary = New-Object System.Windows.Forms.Label
-	$summary.Text = "VhdxCow installation completed with $($reasons.Count) issue(s) detected.`r`n" +
+	$summary.Text = "VhdxManager installation completed with $($reasons.Count) issue(s) detected.`r`n" +
 	                "Review the report below and use 'Save As...' to send it to the maintainers."
 	$summary.Dock = 'Top'
 	$summary.Height = 56
@@ -279,7 +280,7 @@ try {
 		$sfd = New-Object System.Windows.Forms.SaveFileDialog
 		$sfd.FileName = "vhmgr-install-diag-$((Get-Date).ToString('yyyyMMdd-HHmmss')).log"
 		$sfd.Filter = 'Log files (*.log)|*.log|All files (*.*)|*.*'
-		$sfd.Title = 'Save VhdxCow installation diagnostic report'
+		$sfd.Title = 'Save VhdxManager installation diagnostic report'
 		if ($sfd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 			[System.IO.File]::WriteAllText($sfd.FileName, $tb.Text)
 		}
@@ -297,7 +298,7 @@ catch {
 	# UI construction or another unrecoverable error happened. We still want the user
 	# to see SOMETHING — fall back to a plain MessageBox containing what we know,
 	# including any source-collection errors collected so far.
-	$msg = "VhdxCow installer diagnostic dialog failed to render.`r`n`r`n" +
+	$msg = "VhdxManager installer diagnostic dialog failed to render.`r`n`r`n" +
 	       "Error: $($_.Exception.Message)`r`n`r`n"
 	if ($sourceErrors.Count -gt 0) {
 		$msg += "Diagnostic-collection errors before the failure:`r`n"
@@ -305,5 +306,5 @@ catch {
 			$msg += "[$($err.Source)] $($err.Message)`r`n"
 		}
 	}
-	Show-FallbackError -Title 'VhdxCow installer diagnostic' -Body $msg
+	Show-FallbackError -Title 'VhdxManager installer diagnostic' -Body $msg
 }

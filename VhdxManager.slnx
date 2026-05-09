@@ -1,0 +1,14 @@
+<Solution>
+	<Folder Name="/src/">
+		<Project Path="src/VhdxManager.Cli/VhdxManager.Cli.csproj" />
+		<Project Path="src/VhdxManager.Client/VhdxManager.Client.csproj" />
+		<Project Path="src/VhdxManager.Contracts/VhdxManager.Contracts.csproj" />
+		<Project Path="src/VhdxManager.Service/VhdxManager.Service.csproj" />
+	</Folder>
+	<Folder Name="/tests/">
+		<Project Path="tests/VhdxManager.Cli.Tests/VhdxManager.Cli.Tests.csproj" />
+		<Project Path="tests/VhdxManager.Client.Tests/VhdxManager.Client.Tests.csproj" />
+		<Project Path="tests/VhdxManager.Integration.Tests/VhdxManager.Integration.Tests.csproj" />
+		<Project Path="tests/VhdxManager.Service.Tests/VhdxManager.Service.Tests.csproj" />
+	</Folder>
+</Solution>

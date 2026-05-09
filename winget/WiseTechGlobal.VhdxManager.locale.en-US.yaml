@@ -1,0 +1,22 @@
+PackageIdentifier: WiseTechGlobal.VhdxManager
+PackageVersion: 0.2.0
+PackageLocale: en-US
+Publisher: WiseTechGlobal
+PublisherUrl: https://github.com/AntonZhelezniakou-WTG
+PackageName: VhdxManager
+PackageUrl: https://github.com/AntonZhelezniakou-WTG/vhdx-cow
+License: Proprietary
+ShortDescription: VHDX management tool for Windows
+Description: >-
+  Manages VHDX virtual disks on Windows: create, attach, mount to NTFS folders,
+  detach, merge differencing chains, and convert existing folders into
+  VHDX-backed mounts. A Windows Service handles privileged disk operations via
+  P/Invoke; the 'vhmgr' CLI communicates with it over a local gRPC/named-pipe
+  channel.
+Tags:
+  - vhdx
+  - virtual-disk
+  - windows-service
+  - developer-tools
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

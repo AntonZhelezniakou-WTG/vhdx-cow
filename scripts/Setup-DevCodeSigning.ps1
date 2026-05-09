@@ -7,7 +7,7 @@
     Creates a self-signed code-signing cert, exports it to installer/dev-cert.pfx
     (gitignored), and imports it into the LocalMachine Trusted Root and
     Trusted Publisher stores. After this, every MSI build picks up the PFX
-    automatically (see SignMsi target in installer/VhdxCow.Installer.wixproj),
+    automatically (see SignMsi target in installer/VhdxManager.Installer.wixproj),
     and Windows UAC dialogs show "Verified publisher: WiseTechGlobal" + the
     product name instead of "Unknown publisher".
 
@@ -24,7 +24,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$Subject = 'CN=VHDX Copy-on-Write manager (Development), O=WiseTechGlobal, OU=Personal',
+    [string]$Subject = 'CN=VHDX Manager (Development), O=WiseTechGlobal, OU=Personal',
     [string]$PfxPath = (Join-Path $PSScriptRoot '..\installer\dev-cert.pfx'),
     [string]$PfxPassword = 'vhdx-cow-dev',
     [int]$ValidYears = 3
@@ -76,4 +76,4 @@ Write-Host "  PFX password: $PfxPassword (dev-only, hardcoded)"
 Write-Host ""
 Write-Host "After rebuilding, UAC will show:"
 Write-Host '  "Verified publisher: WiseTechGlobal"'
-Write-Host '  "Program: VHDX Copy-on-Write manager"'
+Write-Host '  "Program: VHDX Manager"'

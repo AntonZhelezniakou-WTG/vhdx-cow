@@ -3,7 +3,7 @@
 	xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
 
 	<Package
-		Name="VHDX Copy-on-Write manager"
+		Name="VHDX Manager"
 		Manufacturer="WiseTechGlobal"
 		Version="$(var.Version)"
 		UpgradeCode="B7E4F9A2-3C1D-4E8F-A6B5-9D2C7E1F0A3B"
@@ -11,7 +11,7 @@
 		Compressed="yes">
 
 		<SummaryInformation
-			Description="VHDX Copy-on-Write manager for Windows" />
+			Description="VHDX Manager for Windows" />
 
 		<MajorUpgrade
 			DowngradeErrorMessage="A newer version of [ProductName] is already installed."
@@ -21,21 +21,21 @@
 
 		<!-- Directory structure -->
 		<StandardDirectory Id="ProgramFiles6432Folder">
-			<Directory Id="INSTALLFOLDER" Name="VhdxCow">
+			<Directory Id="INSTALLFOLDER" Name="VhdxManager">
 				<Directory Id="ServiceFolder" Name="Service" />
 				<Directory Id="CliFolder" Name="Cli" />
 			</Directory>
 		</StandardDirectory>
 
 		<StandardDirectory Id="CommonAppDataFolder">
-			<Directory Id="ProgramDataVhdxCow" Name="VhdxCow">
+			<Directory Id="ProgramDataVhdxManager" Name="VhdxManager">
 				<Directory Id="ProgramDataLogs" Name="logs" />
 			</Directory>
 		</StandardDirectory>
 
 		<!-- Features -->
 		<Feature Id="ServiceFeature"
-			Title="VhdxCow Service"
+			Title="VhdxManager Service"
 			Description="Windows Service for privileged VHDX operations"
 			Level="1"
 			AllowAbsent="no">
@@ -66,7 +66,7 @@
 		<UIRef Id="WixUI_ErrorProgressText" />
 		<WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)license.rtf" />
 		<Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
-			Value="The VhdxCow service is registered and the 'vhmgr' CLI has been added to PATH. Open a new console and run 'vhmgr ping' to verify." />
+			Value="The VhdxManager service is registered and the 'vhmgr' CLI has been added to PATH. Open a new console and run 'vhmgr ping' to verify." />
 
 	</Package>
 

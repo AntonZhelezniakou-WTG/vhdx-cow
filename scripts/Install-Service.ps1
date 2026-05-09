@@ -1,16 +1,16 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-	Install, uninstall, or manage the VhdxCow Windows Service.
+	Install, uninstall, or manage the VhdxManager Windows Service.
 
 .PARAMETER Action
 	The action to perform: Install, Uninstall, Start, Stop, Status.
 
 .PARAMETER ServicePath
-	Path to VhdxCow.Service.exe. Required for Install action.
+	Path to VhdxManager.Service.exe. Required for Install action.
 
 .EXAMPLE
-	.\Install-Service.ps1 -Action Install -ServicePath "C:\Services\VhdxCow.Service.exe"
+	.\Install-Service.ps1 -Action Install -ServicePath "C:\Services\VhdxManager.Service.exe"
 	.\Install-Service.ps1 -Action Start
 	.\Install-Service.ps1 -Action Status
 	.\Install-Service.ps1 -Action Uninstall
@@ -24,12 +24,12 @@ param(
 	[string]$ServicePath
 )
 
-$ServiceName = "VhdxCowService"
-$DisplayName = "VHDX Copy-on-Write Service"
-$Description = "Manages VHDX differencing disks for Copy-on-Write workflows."
-$EventLogSource = "VhdxCow"
+$ServiceName = "VhdxManagerService"
+$DisplayName = "VHDX Manager Service"
+$Description = "Manages VHDX virtual disks (create, attach, mount, merge)."
+$EventLogSource = "VhdxManager"
 
-function Install-VhdxCowService {
+function Install-VhdxManagerService {
 	if (-not $ServicePath) {
 		Write-Error "ServicePath is required for Install action"
 		return
@@ -74,7 +74,7 @@ function Install-VhdxCowService {
 	sc.exe failure $ServiceName reset= 86400 actions= restart/60000/restart/60000//0
 
 	# Create ProgramData directory
-	$dataDir = Join-Path $env:ProgramData "VhdxCow"
+	$dataDir = Join-Path $env:ProgramData "VhdxManager"
 	if (-not (Test-Path $dataDir)) {
 		New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
 		New-Item -ItemType Directory -Path (Join-Path $dataDir "logs") -Force | Out-Null
@@ -85,7 +85,7 @@ function Install-VhdxCowService {
 	Write-Host "Start it with: .\Install-Service.ps1 -Action Start"
 }
 
-function Uninstall-VhdxCowService {
+function Uninstall-VhdxManagerService {
 	$existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 	if (-not $existing) {
 		Write-Warning "Service '$ServiceName' is not installed"
@@ -109,7 +109,7 @@ function Uninstall-VhdxCowService {
 	}
 }
 
-function Start-VhdxCowService {
+function Start-VhdxManagerService {
 	$existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 	if (-not $existing) {
 		Write-Error "Service '$ServiceName' is not installed"
@@ -126,7 +126,7 @@ function Start-VhdxCowService {
 	Write-Host "Service started." -ForegroundColor Green
 }
 
-function Stop-VhdxCowService {
+function Stop-VhdxManagerService {
 	$existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 	if (-not $existing) {
 		Write-Error "Service '$ServiceName' is not installed"
@@ -143,7 +143,7 @@ function Stop-VhdxCowService {
 	Write-Host "Service stopped." -ForegroundColor Green
 }
 
-function Get-VhdxCowServiceStatus {
+function Get-VhdxManagerServiceStatus {
 	$existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 	if (-not $existing) {
 		Write-Host "Service '$ServiceName' is not installed" -ForegroundColor Yellow
@@ -155,7 +155,7 @@ function Get-VhdxCowServiceStatus {
 	Write-Host "Status:       $($existing.Status)"
 	Write-Host "Start type:   $($existing.StartType)"
 
-	$dataDir = Join-Path $env:ProgramData "VhdxCow"
+	$dataDir = Join-Path $env:ProgramData "VhdxManager"
 	$stateFile = Join-Path $dataDir "state.json"
 	if (Test-Path $stateFile) {
 		$state = Get-Content $stateFile | ConvertFrom-Json
@@ -167,9 +167,9 @@ function Get-VhdxCowServiceStatus {
 }
 
 switch ($Action) {
-	"Install"   { Install-VhdxCowService }
-	"Uninstall" { Uninstall-VhdxCowService }
-	"Start"     { Start-VhdxCowService }
-	"Stop"      { Stop-VhdxCowService }
-	"Status"    { Get-VhdxCowServiceStatus }
+	"Install"   { Install-VhdxManagerService }
+	"Uninstall" { Uninstall-VhdxManagerService }
+	"Start"     { Start-VhdxManagerService }
+	"Stop"      { Stop-VhdxManagerService }
+	"Status"    { Get-VhdxManagerServiceStatus }
 }

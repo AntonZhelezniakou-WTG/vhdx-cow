@@ -21,7 +21,7 @@
 				the file is on disk regardless of whether the install succeeded.
 			-->
 			<Component Id="InstallDiagnosticsComponent"
-				Directory="ProgramDataVhdxCow"
+				Directory="ProgramDataVhdxManager"
 				Permanent="yes"
 				Guid="E5F7B9CB-2A3D-4F6E-9C0D-4F6E8A0B2C3D">
 				<File Id="InstallDiagnosticsPs1"
@@ -43,8 +43,8 @@
 			Return="ignore" — diagnostic UI must never break the installer.
 		-->
 		<CustomAction Id="ShowInstallDiagnostics"
-			Directory="ProgramDataVhdxCow"
-			ExeCommand='powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "[CommonAppDataFolder]VhdxCow\InstallDiagnostics.ps1"'
+			Directory="ProgramDataVhdxManager"
+			ExeCommand='powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "[CommonAppDataFolder]VhdxManager\InstallDiagnostics.ps1"'
 			Execute="immediate"
 			Return="ignore" />
 
