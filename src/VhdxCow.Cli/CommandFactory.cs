@@ -166,6 +166,68 @@ static class CommandFactory
 				return 0;
 			}));
 
+		// --- mount (existing standalone VHDX) ---
+		var mountVhdxOption = new Option<string>("--path") { Description = "Path to the VHDX file to mount", Required = true };
+		var mountFolderOption = new Option<string>("--mount") { Description = "Folder to mount the VHDX to", Required = true };
+		var mountCommand = new Command("mount", "Attach + mount an existing VHDX without creating it.")
+		{
+			Options = { mountVhdxOption, mountFolderOption },
+		};
+		mountCommand.SetAction(async (parseResult, ct) =>
+			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
+			{
+				var reply = await client.AttachAndMountAsync(
+					parseResult.GetValue(mountVhdxOption)!,
+					parseResult.GetValue(mountFolderOption)!,
+					token);
+				if (reply.Success)
+				{
+					Console.WriteLine($"Mounted to {parseResult.GetValue(mountFolderOption)} (volume {reply.VolumeGuidPath})");
+					return 0;
+				}
+				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
+				return 1;
+			}));
+
+		// --- unmount (keep file) ---
+		var unmountVhdxOption = new Option<string>("--path") { Description = "Path to the VHDX file to unmount", Required = true };
+		var unmountCommand = new Command("unmount", "Unmount + detach a VHDX, keeping the file on disk.")
+		{
+			Options = { unmountVhdxOption },
+		};
+		unmountCommand.SetAction(async (parseResult, ct) =>
+			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
+			{
+				var reply = await client.UnmountAndDetachAsync(parseResult.GetValue(unmountVhdxOption)!, token);
+				if (reply.Success)
+				{
+					Console.WriteLine("VHDX unmounted and detached (file kept).");
+					return 0;
+				}
+				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
+				return 1;
+			}));
+
+		// --- delete (unmount + detach + delete file) ---
+		var deleteVhdxOption = new Option<string>("--path") { Description = "Path to the VHDX file to delete", Required = true };
+		var deleteCommand = new Command("delete", "Unmount + detach + delete the VHDX file.")
+		{
+			Options = { deleteVhdxOption },
+		};
+		deleteCommand.SetAction(async (parseResult, ct) =>
+			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
+			{
+				// Delete reuses the existing destructive Detach RPC.
+				var reply = await client.DetachAsync(parseResult.GetValue(deleteVhdxOption)!, token);
+				if (reply.Success)
+				{
+					Console.WriteLine("VHDX detached and file deleted.");
+					return 0;
+				}
+				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
+				return 1;
+			}));
+
 		rootCommand.Subcommands.Add(pingCommand);
 		rootCommand.Subcommands.Add(initCommand);
 		rootCommand.Subcommands.Add(resetCommand);
@@ -174,6 +236,11 @@ static class CommandFactory
 		rootCommand.Subcommands.Add(publishCommand);
 		rootCommand.Subcommands.Add(listCommand);
 		rootCommand.Subcommands.Add(LogsCommand.Create());
+		rootCommand.Subcommands.Add(CreateCommand.Build(pipeNameOption, timeoutOption, clientFactory));
+		rootCommand.Subcommands.Add(mountCommand);
+		rootCommand.Subcommands.Add(unmountCommand);
+		rootCommand.Subcommands.Add(deleteCommand);
+		rootCommand.Subcommands.Add(ConvertCommand.Build(pipeNameOption, timeoutOption, clientFactory));
 
 		return rootCommand;
 	}

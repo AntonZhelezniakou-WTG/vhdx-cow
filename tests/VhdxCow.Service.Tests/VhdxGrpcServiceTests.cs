@@ -12,6 +12,8 @@ public class VhdxGrpcServiceTests
 {
 	IVhdxManager vhdxManager = null!;
 	IVolumeManager volumeManager = null!;
+	IDiskInitializer diskInitializer = null!;
+	IFolderTransferOrchestrator folderTransferOrchestrator = null!;
 	IStateStore stateStore = null!;
 	PathValidator pathValidator = null!;
 	VhdxGrpcService sut = null!;
@@ -26,6 +28,8 @@ public class VhdxGrpcServiceTests
 	{
 		vhdxManager = Substitute.For<IVhdxManager>();
 		volumeManager = Substitute.For<IVolumeManager>();
+		diskInitializer = Substitute.For<IDiskInitializer>();
+		folderTransferOrchestrator = Substitute.For<IFolderTransferOrchestrator>();
 		stateStore = Substitute.For<IStateStore>();
 
 		var config = new ConfigurationBuilder()
@@ -39,7 +43,8 @@ public class VhdxGrpcServiceTests
 
 		pathValidator = new PathValidator(config, NullLogger<PathValidator>.Instance);
 		sut = new VhdxGrpcService(
-			vhdxManager, volumeManager, stateStore, pathValidator,
+			vhdxManager, volumeManager, diskInitializer, folderTransferOrchestrator,
+			stateStore, pathValidator,
 			NullLogger<VhdxGrpcService>.Instance);
 
 		callContext = Substitute.For<ServerCallContext>();
@@ -142,9 +147,13 @@ public class VhdxGrpcServiceTests
 				})
 				.Build();
 			var service = new VhdxGrpcService(
-				vhdxManager, volumeManager, stateStore,
-				new PathValidator(config, NullLogger<PathValidator>.Instance),
-				NullLogger<VhdxGrpcService>.Instance);
+				vhdxManager: vhdxManager,
+				volumeManager: volumeManager,
+				diskInitializer: Substitute.For<IDiskInitializer>(),
+				folderTransferOrchestrator: Substitute.For<IFolderTransferOrchestrator>(),
+				stateStore: stateStore,
+				pathValidator: new PathValidator(config, NullLogger<PathValidator>.Instance),
+				logger: NullLogger<VhdxGrpcService>.Instance);
 
 			vhdxManager
 				.CreateDifferencingDiskAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -303,7 +312,7 @@ public class VhdxGrpcServiceTests
 	public async Task ListMounts_NoMounts_ReturnsEmptyList()
 	{
 		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
-			.Returns(Array.Empty<MountedDiskState>());
+			.Returns([]);
 
 		var reply = await sut.ListMounts(new ListMountsRequest(), callContext);
 
@@ -314,7 +323,7 @@ public class VhdxGrpcServiceTests
 	public async Task ListMounts_WithMounts_ReturnsAllWithInfo()
 	{
 		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
-			.Returns(new[] { SomeState(@"C:\child1.vhdx"), SomeState(@"C:\child2.vhdx") });
+			.Returns([SomeState(@"C:\child1.vhdx"), SomeState(@"C:\child2.vhdx")]);
 
 		vhdxManager.GetInfoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns(new VhdxInfo(IsAttached: true, ParentPath: null, VirtualSize: 0, PhysicalSize: 512));
@@ -331,7 +340,7 @@ public class VhdxGrpcServiceTests
 	public async Task ListMounts_GetInfoThrowsForOne_StillReturnsAll()
 	{
 		stateStore.GetAllAsync(Arg.Any<CancellationToken>())
-			.Returns(new[] { SomeState(@"C:\broken.vhdx"), SomeState(@"C:\ok.vhdx") });
+			.Returns([SomeState(@"C:\broken.vhdx"), SomeState(@"C:\ok.vhdx")]);
 
 		vhdxManager.GetInfoAsync(@"C:\broken.vhdx", Arg.Any<CancellationToken>())
 			.Returns<VhdxInfo>(_ => throw new InvalidOperationException("disk gone"));

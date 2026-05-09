@@ -204,10 +204,10 @@ static class LogsCommand
 
 	static DateTime? TryFindLatestServiceInstallEvent()
 	{
+		const string xpath = $"*[System[Provider[@Name='{ScmProvider}'] and EventID=7045]]";
+
 		try
 		{
-			var xpath =
-				$"*[System[Provider[@Name='{ScmProvider}'] and EventID=7045]]";
 			var query = new EventLogQuery(SystemLogName, PathType.LogName, xpath);
 			using var reader = new EventLogReader(query);
 
@@ -242,8 +242,7 @@ static class LogsCommand
 	{
 		try
 		{
-			using var key = Registry.LocalMachine.OpenSubKey(
-				$@"SYSTEM\CurrentControlSet\Services\{ServiceConstants.ServiceName}");
+			using var key = Registry.LocalMachine.OpenSubKey($"""SYSTEM\CurrentControlSet\Services\{ServiceConstants.ServiceName}""");
 			if (key?.GetValue("ImagePath") is not string raw)
 			{
 				return null;
@@ -298,7 +297,7 @@ static class LogsCommand
 		// surface a more useful error if a single provider's read fails.
 		foreach (var provider in ApplicationProvidersOfInterest)
 		{
-			List<CollectedEvent>? batch = null;
+			List<CollectedEvent>? batch;
 			try
 			{
 				batch = ReadApplicationEventsForProvider(provider, startUtc).ToList();
@@ -309,10 +308,8 @@ static class LogsCommand
 				continue;
 			}
 
-			if (batch is not null)
-			{
-				foreach (var ev in batch) yield return ev;
-			}
+			foreach (var ev in batch)
+				yield return ev;
 		}
 	}
 
@@ -344,8 +341,8 @@ static class LogsCommand
 		}
 	}
 
-	static bool MentionsService(string message) =>
-		message.Contains(ServiceConstants.ServiceName, StringComparison.OrdinalIgnoreCase)
+	static bool MentionsService(string message)
+		=> message.Contains(ServiceConstants.ServiceName, StringComparison.OrdinalIgnoreCase)
 		|| message.Contains("VhdxCow", StringComparison.OrdinalIgnoreCase);
 
 	static string? SafeFormat(EventRecord record)
@@ -363,14 +360,13 @@ static class LogsCommand
 		}
 	}
 
-	static CollectedEvent ToCollectedEvent(string logName, EventRecord record, string? message) =>
-		new(
-			logName,
-			record.ProviderName ?? "(unknown)",
-			record.Id,
-			record.LevelDisplayName ?? record.Level?.ToString() ?? "(unknown)",
-			(record.TimeCreated ?? DateTime.UtcNow).ToUniversalTime(),
-			message ?? string.Empty);
+	static CollectedEvent ToCollectedEvent(string logName, EventRecord record, string? message) => new(
+		LogName: logName,
+		ProviderName: record.ProviderName ?? "(unknown)",
+		EventId: record.Id,
+		Level: record.LevelDisplayName ?? record.Level?.ToString() ?? "(unknown)",
+		TimeCreatedUtc: (record.TimeCreated ?? DateTime.UtcNow).ToUniversalTime(),
+		Message: message ?? string.Empty);
 
 	static string BuildReport(
 		DateTime startUtc,
@@ -409,8 +405,7 @@ static class LogsCommand
 		foreach (var ev in events)
 		{
 			sb.AppendLine();
-			sb.Append(CultureInfo.InvariantCulture,
-				$"[{ev.TimeCreatedUtc:O}] {ev.LogName} | {ev.ProviderName} | EventId={ev.EventId} | {ev.Level}");
+			sb.Append(CultureInfo.InvariantCulture, $"[{ev.TimeCreatedUtc:O}] {ev.LogName} | {ev.ProviderName} | EventId={ev.EventId} | {ev.Level}");
 			sb.AppendLine();
 			sb.AppendLine(ev.Message);
 			sb.AppendLine(new string('-', 72));

@@ -10,6 +10,8 @@ namespace VhdxCow.Service.Services;
 public sealed class VhdxGrpcService(
 	IVhdxManager vhdxManager,
 	IVolumeManager volumeManager,
+	IDiskInitializer diskInitializer,
+	IFolderTransferOrchestrator folderTransferOrchestrator,
 	IStateStore stateStore,
 	PathValidator pathValidator,
 	ILogger<VhdxGrpcService> logger) : VhdxService.VhdxServiceBase
@@ -313,5 +315,178 @@ public sealed class VhdxGrpcService(
 
 		logger.LogDebug("ListMounts returning {Count} mounts", reply.Mounts.Count);
 		return reply;
+	}
+
+	public override async Task<CreateVhdxReply> CreateVhdx(CreateVhdxRequest request, ServerCallContext context)
+	{
+		logger.LogInformation(
+			"CreateVhdx: Path={Path}, Size={Size}, Dynamic={Dynamic}, Mount={Mount}",
+				request.VhdxPath, request.SizeBytes, request.Dynamic, request.MountPath);
+
+		if (!pathValidator.ValidateChildPath(request.VhdxPath, out var pathError))
+			return new CreateVhdxReply { Success = false, ErrorMessage = pathError };
+
+		var hasMount = !string.IsNullOrEmpty(request.MountPath);
+		if (hasMount && !pathValidator.ValidateMountPath(request.MountPath, out var mountError))
+			return new CreateVhdxReply { Success = false, ErrorMessage = mountError };
+
+		if (File.Exists(request.VhdxPath))
+			return new CreateVhdxReply { Success = false, ErrorMessage = $"VHDX already exists: {request.VhdxPath}" };
+
+		try
+		{
+			var sw = Stopwatch.StartNew();
+
+			await vhdxManager.CreateStandaloneVhdxAsync(
+				request.VhdxPath, request.SizeBytes, request.Dynamic, context.CancellationToken);
+
+			var physicalPath = await vhdxManager.AttachAsync(
+				request.VhdxPath, context.CancellationToken);
+
+			var label = string.IsNullOrEmpty(request.NtfsLabel) ? "data" : request.NtfsLabel;
+			await diskInitializer.InitializeAndFormatAsync(
+				physicalPath, label, context.CancellationToken);
+
+			var volumeGuidPath = string.Empty;
+			if (hasMount)
+			{
+				volumeGuidPath = await volumeManager.GetVolumeGuidPathAsync(
+					physicalPath, context.CancellationToken);
+				await volumeManager.MountToFolderAsync(
+					volumeGuidPath, request.MountPath, context.CancellationToken);
+
+				await stateStore.AddAsync(new MountedDiskState
+				{
+					ChildVhdxPath = request.VhdxPath,
+					ParentVhdxPath = string.Empty, // standalone — no parent
+					MountPath = request.MountPath,
+					VolumeGuidPath = volumeGuidPath,
+				}, context.CancellationToken);
+			}
+			else
+			{
+				// Not mounted — detach so we leave the system clean. The user
+				// can mount later via AttachAndMount.
+				await vhdxManager.DetachAsync(request.VhdxPath, context.CancellationToken);
+			}
+
+			sw.Stop();
+			logger.LogInformation(
+				"CreateVhdx completed in {Duration}ms: {Path}",
+					sw.ElapsedMilliseconds, request.VhdxPath);
+
+			return new CreateVhdxReply
+			{
+				Success = true,
+				VolumeGuidPath = volumeGuidPath,
+			};
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "CreateVhdx failed for {Path}", request.VhdxPath);
+			return new CreateVhdxReply { Success = false, ErrorMessage = ex.Message };
+		}
+	}
+
+	public override async Task<AttachAndMountReply> AttachAndMount(AttachAndMountRequest request, ServerCallContext context)
+	{
+		logger.LogInformation("AttachAndMount: {Path} -> {Mount}", request.VhdxPath, request.MountPath);
+
+		if (!pathValidator.ValidateChildPath(request.VhdxPath, out var pathError))
+			return new AttachAndMountReply { Success = false, ErrorMessage = pathError };
+		if (!pathValidator.ValidateMountPath(request.MountPath, out var mountError))
+			return new AttachAndMountReply { Success = false, ErrorMessage = mountError };
+		if (!File.Exists(request.VhdxPath))
+			return new AttachAndMountReply { Success = false, ErrorMessage = $"VHDX not found: {request.VhdxPath}" };
+
+		try
+		{
+			var physicalPath = await vhdxManager.AttachAsync(request.VhdxPath, context.CancellationToken);
+			var volumeGuid = await volumeManager.GetVolumeGuidPathAsync(physicalPath, context.CancellationToken);
+			await volumeManager.MountToFolderAsync(volumeGuid, request.MountPath, context.CancellationToken);
+
+			await stateStore.AddAsync(new MountedDiskState
+			{
+				ChildVhdxPath = request.VhdxPath,
+				ParentVhdxPath = string.Empty,
+				MountPath = request.MountPath,
+				VolumeGuidPath = volumeGuid,
+			}, context.CancellationToken);
+
+			return new AttachAndMountReply { Success = true, VolumeGuidPath = volumeGuid };
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "AttachAndMount failed for {Path}", request.VhdxPath);
+			return new AttachAndMountReply { Success = false, ErrorMessage = ex.Message };
+		}
+	}
+
+	public override async Task<UnmountAndDetachReply> UnmountAndDetach(UnmountAndDetachRequest request, ServerCallContext context)
+	{
+		logger.LogInformation("UnmountAndDetach: {Path}", request.VhdxPath);
+
+		var state = await stateStore.GetAsync(request.VhdxPath, context.CancellationToken);
+		try
+		{
+			if (state is not null)
+			{
+				await volumeManager.UnmountFolderAsync(state.MountPath, context.CancellationToken);
+			}
+			await vhdxManager.DetachAsync(request.VhdxPath, context.CancellationToken);
+			await stateStore.RemoveAsync(request.VhdxPath, context.CancellationToken);
+
+			return new UnmountAndDetachReply { Success = true };
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "UnmountAndDetach failed for {Path}", request.VhdxPath);
+			return new UnmountAndDetachReply { Success = false, ErrorMessage = ex.Message };
+		}
+	}
+
+	public override async Task<ConvertFolderReply> ConvertFolder(ConvertFolderRequest request, ServerCallContext context)
+	{
+		logger.LogInformation(
+			"ConvertFolder: Folder={Folder}, Vhdx={Vhdx}, Size={Size}",
+				request.FolderPath, request.VhdxPath, request.SizeBytes);
+
+		if (!pathValidator.ValidateConvertSourcePath(request.FolderPath, out var folderError))
+			return new ConvertFolderReply { Success = false, ErrorMessage = folderError };
+		if (!pathValidator.ValidateChildPath(request.VhdxPath, out var vhdxError))
+			return new ConvertFolderReply { Success = false, ErrorMessage = vhdxError };
+		if (!pathValidator.ValidateMountPath(request.FolderPath, out var mountError))
+			return new ConvertFolderReply { Success = false, ErrorMessage = mountError };
+
+		var label = string.IsNullOrEmpty(request.NtfsLabel) ? "data" : request.NtfsLabel;
+
+		var result = await folderTransferOrchestrator.ConvertFolderAsync(
+			request.FolderPath,
+			request.VhdxPath,
+			request.SizeBytes,
+			request.Dynamic,
+			label,
+			request.DeleteStaging,
+			context.CancellationToken);
+
+		if (result.Success)
+		{
+			await stateStore.AddAsync(new MountedDiskState
+			{
+				ChildVhdxPath = request.VhdxPath,
+				ParentVhdxPath = string.Empty,
+				MountPath = request.FolderPath,
+				VolumeGuidPath = result.VolumeGuidPath,
+			}, context.CancellationToken);
+		}
+
+		return new ConvertFolderReply
+		{
+			Success = result.Success,
+			ErrorMessage = result.ErrorMessage ?? string.Empty,
+			StagingFolderPath = result.StagingFolderPath,
+			FilesCopied = result.FilesCopied,
+			BytesCopied = result.BytesCopied,
+		};
 	}
 }

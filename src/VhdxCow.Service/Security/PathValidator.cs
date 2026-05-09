@@ -15,6 +15,9 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 	readonly string[] allowedChildBasePaths
 		= ExpandEnvVars(configuration.GetSection("VhdxCow:AllowedChildBasePaths").Get<string[]>());
 
+	readonly string[] allowedConvertSourcePaths
+		= ExpandEnvVars(configuration.GetSection("VhdxCow:AllowedConvertSourcePaths").Get<string[]>());
+
 	static string[] ExpandEnvVars(string[]? values)
 		=> values is null
 			? []
@@ -28,6 +31,9 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 
 	public bool ValidateChildPath(string path, out string error)
 		=> ValidateAgainstAllowList(path, allowedChildBasePaths, "child VHDX", out error);
+
+	public bool ValidateConvertSourcePath(string path, out string error)
+		=> ValidateAgainstAllowList(path, allowedConvertSourcePaths, "convert source", out error);
 
 	bool ValidateAgainstAllowList(string path, string[] allowedPaths, string pathType, out string error)
 	{
@@ -72,7 +78,9 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 		error = $"The {pathType} path is not within any allowed directory";
 		logger.LogWarning(
 			"Path {Path} not in allowed {PathType} directories: [{AllowedDirs}]",
-				fullPath, pathType, string.Join(", ", allowedPaths));
+				fullPath, // Path
+				pathType, // PathType
+				string.Join(", ", allowedPaths)); // AllowedDirs
 		return false;
 	}
 }

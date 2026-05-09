@@ -79,6 +79,9 @@ try
 	builder.Services.AddGrpc();
 	builder.Services.AddSingleton<IVhdxManager, VhdxManager>();
 	builder.Services.AddSingleton<IVolumeManager, VolumeManager>();
+	builder.Services.AddSingleton<IDiskInitializer, Win32DiskInitializer>();
+	builder.Services.AddSingleton<Robocopy>();
+	builder.Services.AddSingleton<IFolderTransferOrchestrator, FolderTransferOrchestrator>();
 	builder.Services.AddSingleton<IStateStore, JsonStateStore>();
 	builder.Services.AddSingleton<PathValidator>();
 

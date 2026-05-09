@@ -28,6 +28,20 @@ service VhdxService {
 
 	// List all active mounts managed by the service.
 	rpc ListMounts (ListMountsRequest) returns (ListMountsReply);
+
+	// Create a standalone (non-differencing) VHDX file, partition GPT, format NTFS,
+	// and optionally attach + mount it to a folder.
+	rpc CreateVhdx (CreateVhdxRequest) returns (CreateVhdxReply);
+
+	// Attach + mount an existing VHDX (parent or standalone). No file creation.
+	rpc AttachAndMount (AttachAndMountRequest) returns (AttachAndMountReply);
+
+	// Unmount + detach without deleting the VHDX file (file kept for re-use).
+	rpc UnmountAndDetach (UnmountAndDetachRequest) returns (UnmountAndDetachReply);
+
+	// Convert an existing folder into a VHDX-mounted folder: rename source aside,
+	// create + mount a new VHDX in its place, robocopy contents back.
+	rpc ConvertFolder (ConvertFolderRequest) returns (ConvertFolderReply);
 }
 
 message CreateChildRequest {
@@ -104,4 +118,55 @@ message MountInfo {
 	string volume_guid_path = 4;
 	bool is_attached = 5;
 	uint64 child_size_bytes = 6;
+}
+
+message CreateVhdxRequest {
+	string vhdx_path = 1;
+	int64 size_bytes = 2;
+	bool dynamic = 3;
+	string ntfs_label = 4;
+	string mount_path = 5;
+}
+
+message CreateVhdxReply {
+	bool success = 1;
+	string error_message = 2;
+	string volume_guid_path = 3;
+}
+
+message AttachAndMountRequest {
+	string vhdx_path = 1;
+	string mount_path = 2;
+}
+
+message AttachAndMountReply {
+	bool success = 1;
+	string error_message = 2;
+	string volume_guid_path = 3;
+}
+
+message UnmountAndDetachRequest {
+	string vhdx_path = 1;
+}
+
+message UnmountAndDetachReply {
+	bool success = 1;
+	string error_message = 2;
+}
+
+message ConvertFolderRequest {
+	string folder_path = 1;
+	string vhdx_path = 2;
+	int64 size_bytes = 3;
+	bool dynamic = 4;
+	string ntfs_label = 5;
+	bool delete_staging = 6;
+}
+
+message ConvertFolderReply {
+	bool success = 1;
+	string error_message = 2;
+	string staging_folder_path = 3;
+	int64 files_copied = 4;
+	int64 bytes_copied = 5;
 }

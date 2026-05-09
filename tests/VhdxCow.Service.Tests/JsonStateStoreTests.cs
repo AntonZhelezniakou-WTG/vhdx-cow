@@ -77,7 +77,7 @@ public class JsonStateStoreTests
 		var state = await store.GetAsync(@"C:\child.vhdx", CancellationToken.None);
 
 		state.Should().NotBeNull();
-		state!.ChildVhdxPath.Should().Be(@"C:\child.vhdx");
+		state.ChildVhdxPath.Should().Be(@"C:\child.vhdx");
 	}
 
 	[Test]
@@ -132,7 +132,7 @@ public class JsonStateStoreTests
 		var all = await store.GetAllAsync(CancellationToken.None);
 
 		all.Should().HaveCount(2);
-		all.Select(s => s.ChildVhdxPath).Should().BeEquivalentTo([@"C:\child1.vhdx", @"C:\child2.vhdx"]);
+		all.Select(s => s.ChildVhdxPath).Should().BeEquivalentTo(@"C:\child1.vhdx", @"C:\child2.vhdx");
 	}
 
 	[Test]

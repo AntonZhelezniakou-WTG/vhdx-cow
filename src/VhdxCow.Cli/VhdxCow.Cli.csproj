@@ -12,6 +12,7 @@
 	<ItemGroup>
 		<PackageReference Include="System.CommandLine" />
 		<PackageReference Include="System.Diagnostics.EventLog" />
+		<PackageReference Include="Spectre.Console" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -16,7 +16,68 @@ public sealed class VhdxManager(ILogger<VhdxManager> logger) : IVhdxManager
 	const uint DeviceVhdx = 3;
 
 	public Task CreateDifferencingDiskAsync(string parentVhdxPath, string childVhdxPath, CancellationToken ct)
-		=> Task.Run(() => CreateDifferencingDiskCore(parentVhdxPath, childVhdxPath), ct);
+		=> Task.Run(()
+		=> CreateDifferencingDiskCore(parentVhdxPath, childVhdxPath),
+			ct);
+
+	public Task CreateStandaloneVhdxAsync(string vhdxPath, long sizeBytes, bool dynamic, CancellationToken ct)
+		=> Task.Run(()
+		=> CreateStandaloneVhdxCore(vhdxPath, sizeBytes, dynamic),
+			ct);
+
+	void CreateStandaloneVhdxCore(string vhdxPath, long sizeBytes, bool dynamic)
+	{
+		if (sizeBytes < 3 * 1024 * 1024)
+		{
+			throw new ArgumentOutOfRangeException(nameof(sizeBytes), sizeBytes, "Minimum supported VHDX size is 3 MB.");
+		}
+
+		logger.LogInformation(
+			"Creating standalone VHDX: Path={Path}, SizeBytes={SizeBytes}, Dynamic={Dynamic}",
+				vhdxPath, sizeBytes, dynamic);
+
+		var storageType = new VIRTUAL_STORAGE_TYPE
+		{
+			DeviceId = DeviceVhdx,
+			VendorId = VendorMicrosoft,
+		};
+
+		var createParams = new CREATE_VIRTUAL_DISK_PARAMETERS
+		{
+			Version = CREATE_VIRTUAL_DISK_VERSION.CREATE_VIRTUAL_DISK_VERSION_2,
+		};
+		createParams.Anonymous.Version2.UniqueId = Guid.NewGuid();
+		createParams.Anonymous.Version2.MaximumSize = (ulong)sizeBytes;
+		createParams.Anonymous.Version2.BlockSizeInBytes = 0;   // VirtDisk default
+		createParams.Anonymous.Version2.SectorSizeInBytes = 0;  // VirtDisk default (logical 512)
+
+		// Fixed disk preallocates the full physical extent; dynamic uses default (sparse VHDX).
+		var flags = dynamic
+			? CREATE_VIRTUAL_DISK_FLAG.CREATE_VIRTUAL_DISK_FLAG_NONE
+			: CREATE_VIRTUAL_DISK_FLAG.CREATE_VIRTUAL_DISK_FLAG_FULL_PHYSICAL_ALLOCATION;
+
+		var result = PInvoke.CreateVirtualDisk(
+			in storageType,
+			vhdxPath,
+			VirtualDiskAccessMask: VIRTUAL_DISK_ACCESS_MASK.VIRTUAL_DISK_ACCESS_NONE,
+			SecurityDescriptor: default,
+			flags,
+			ProviderSpecificFlags: 0,
+			in createParams,
+			Overlapped: null,
+			out var handle);
+
+		if (result is not WIN32_ERROR.ERROR_SUCCESS)
+		{
+			logger.LogError(
+				"CreateVirtualDisk (standalone) failed: {ErrorCode} ({ErrorMessage})",
+					(uint)result, new Win32Exception((int)result).Message);
+			throw new Win32Exception((int)result, $"CreateVirtualDisk failed for '{vhdxPath}'");
+		}
+
+		handle.Dispose();
+		logger.LogInformation("Standalone VHDX created: {Path}", vhdxPath);
+	}
 
 	unsafe void CreateDifferencingDiskCore(string parentVhdxPath, string childVhdxPath)
 	{
