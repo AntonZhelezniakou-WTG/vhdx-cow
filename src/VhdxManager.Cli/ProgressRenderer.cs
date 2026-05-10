@@ -23,12 +23,20 @@ namespace VhdxManager.Cli;
 /// </summary>
 internal sealed class ProgressRenderer : IDisposable
 {
-	static readonly char[] SpinnerFrames =
-		['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-	const int FrameIntervalMs = 80;
+	// Reuse Spectre.Console's canonical Dots spinner frames + interval rather than
+	// hard-coding our own braille array. The animation is identical — we just stop
+	// owning a constant we shouldn't own.
+	static readonly IReadOnlyList<string> SpinnerFrames = Spinner.Known.Dots.Frames;
+	static readonly int FrameIntervalMs = (int)Spinner.Known.Dots.Interval.TotalMilliseconds;
 
-	// ANSI escape: ESC + "[2K" erases the current line; "\r" returns cursor to col 0.
-	const string ClearLine = "[2K\r";
+	// CSI "Erase in Line" — `ESC [ 2 K` clears the entire current line; `\r`
+	// returns the cursor to column 0. The ESC byte (\x1b) is essential — without
+	// it the terminal would just print the literal characters "[2K".
+	const string ClearLine = "\x1b[2K\r";
+	// CSI cursor-visibility toggles — DECTCEM. We hide the cursor while spinning
+	// so it doesn't blink at the next-write position behind the glyph.
+	const string HideCursor = "\x1b[?25l";
+	const string ShowCursor = "\x1b[?25h";
 
 	readonly bool isInteractive;
 	readonly Lock @lock = new();
@@ -37,6 +45,7 @@ internal sealed class ProgressRenderer : IDisposable
 	string? currentStep;
 	string currentDetail = "";
 	int frameIndex;
+	bool cursorHidden;
 
 	public ProgressRenderer()
 	{
@@ -74,6 +83,7 @@ internal sealed class ProgressRenderer : IDisposable
 			currentStep = step;
 			currentDetail = detail;
 			frameIndex = 0;
+			HideCursorIfNeededLocked();
 			DrawFrameLocked();
 
 			spinnerTimer = new Timer(_ =>
@@ -81,7 +91,7 @@ internal sealed class ProgressRenderer : IDisposable
 				lock (@lock)
 				{
 					if (currentStep is null) return; // already stopped
-					frameIndex = (frameIndex + 1) % SpinnerFrames.Length;
+					frameIndex = (frameIndex + 1) % SpinnerFrames.Count;
 					DrawFrameLocked();
 				}
 			}, state: null, dueTime: FrameIntervalMs, period: FrameIntervalMs);
@@ -101,6 +111,7 @@ internal sealed class ProgressRenderer : IDisposable
 			}
 			currentStep = null;
 			currentDetail = "";
+			RestoreCursorIfNeededLocked();
 		}
 		toDispose?.Dispose();
 	}
@@ -109,8 +120,24 @@ internal sealed class ProgressRenderer : IDisposable
 	{
 		if (currentStep is null) return;
 		Console.Write(ClearLine);
+		// Bright green glyph + default-colour label so the spinner glyph pops; the
+		// detail piece carries its own grey style via FormatDetailMarkup.
 		AnsiConsole.Markup(
-			$"[grey]{SpinnerFrames[frameIndex]} {Markup.Escape(currentStep)}{FormatDetailMarkup(currentDetail)}[/]");
+			$"[green]{SpinnerFrames[frameIndex]}[/] {Markup.Escape(currentStep)}{FormatDetailMarkup(currentDetail)}");
+	}
+
+	void HideCursorIfNeededLocked()
+	{
+		if (!isInteractive || cursorHidden) return;
+		Console.Write(HideCursor);
+		cursorHidden = true;
+	}
+
+	void RestoreCursorIfNeededLocked()
+	{
+		if (!cursorHidden) return;
+		Console.Write(ShowCursor);
+		cursorHidden = false;
 	}
 
 	static string FormatDetailMarkup(string detail)
