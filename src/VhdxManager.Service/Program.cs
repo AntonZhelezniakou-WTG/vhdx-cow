@@ -4,6 +4,7 @@ using System.Security.Principal;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
 using VhdxManager.Contracts;
+using VhdxManager.Service.Configuration;
 using VhdxManager.Service.Diagnostics;
 using VhdxManager.Service.Security;
 using VhdxManager.Service.Services;
@@ -84,6 +85,8 @@ try
 	builder.Services.AddSingleton<IFolderTransferOrchestrator, FolderTransferOrchestrator>();
 	builder.Services.AddSingleton<IStateStore, JsonStateStore>();
 	builder.Services.AddSingleton<PathValidator>();
+	builder.Services.AddSingleton<IDefenderExclusionManager, DefenderExclusionManager>();
+	builder.Services.AddSingleton<IServiceSettingsStore, ServiceSettingsStore>();
 
 	var app = builder.Build();
 

@@ -1,5 +1,6 @@
 using Grpc.Core;
 using VhdxManager.Contracts;
+using VhdxManager.Service.Configuration;
 using VhdxManager.Service.Security;
 using VhdxManager.Service.Services;
 using VhdxManager.Service.State;
@@ -16,6 +17,8 @@ public class VhdxGrpcServiceTests
 	IFolderTransferOrchestrator folderTransferOrchestrator = null!;
 	IStateStore stateStore = null!;
 	PathValidator pathValidator = null!;
+	IDefenderExclusionManager defenderExclusionManager = null!;
+	IServiceSettingsStore settingsStore = null!;
 	VhdxGrpcService sut = null!;
 	ServerCallContext callContext = null!;
 
@@ -42,9 +45,12 @@ public class VhdxGrpcServiceTests
 			.Build();
 
 		pathValidator = new PathValidator(config, NullLogger<PathValidator>.Instance);
+		defenderExclusionManager = Substitute.For<IDefenderExclusionManager>();
+		settingsStore = Substitute.For<IServiceSettingsStore>();
 		sut = new VhdxGrpcService(
 			virtDiskManager, volumeManager, diskInitializer, folderTransferOrchestrator,
 			stateStore, pathValidator,
+			defenderExclusionManager, settingsStore,
 			NullLogger<VhdxGrpcService>.Instance);
 
 		callContext = Substitute.For<ServerCallContext>();
@@ -153,6 +159,8 @@ public class VhdxGrpcServiceTests
 				folderTransferOrchestrator: Substitute.For<IFolderTransferOrchestrator>(),
 				stateStore: stateStore,
 				pathValidator: new PathValidator(config, NullLogger<PathValidator>.Instance),
+				defenderExclusionManager: Substitute.For<IDefenderExclusionManager>(),
+				settingsStore: Substitute.For<IServiceSettingsStore>(),
 				logger: NullLogger<VhdxGrpcService>.Instance);
 
 			virtDiskManager

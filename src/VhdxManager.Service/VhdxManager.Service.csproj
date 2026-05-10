@@ -37,4 +37,8 @@
 		<ProjectReference Include="..\VhdxManager.Contracts\VhdxManager.Contracts.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="VhdxManager.Service.Tests" />
+	</ItemGroup>
+
 </Project>

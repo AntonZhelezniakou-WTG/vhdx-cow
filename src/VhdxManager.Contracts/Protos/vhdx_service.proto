@@ -20,6 +20,10 @@ service VhdxService {
 	rpc GetStatus (GetStatusRequest) returns (GetStatusReply);
 	rpc ListMounts (ListMountsRequest) returns (ListMountsReply);
 
+	// Read/write the service-side defaults persisted in appsettings.json.
+	rpc GetSettings (GetSettingsRequest) returns (GetSettingsReply);
+	rpc SetSettings (SetSettingsRequest) returns (SetSettingsReply);
+
 	// ---- streaming mutating RPCs ----
 
 	// Create a differencing (child) VHDX disk, attach it, and mount to a folder.
@@ -98,17 +102,45 @@ message MountInfo {
 	uint64 child_size_bytes = 6;
 }
 
+// ---------- Settings RPC messages ----------
+
+message GetSettingsRequest {}
+message GetSettingsReply {
+	// Tri-state for the persisted default of --add-defender-exclusion.
+	// has_default_add_defender_exclusion=false means "unset → CLI prompts user".
+	bool has_default_add_defender_exclusion = 1;
+	bool default_add_defender_exclusion = 2;
+}
+
+message SetSettingsRequest {
+	// Mirrors the tri-state from GetSettingsReply.
+	// If clear_default_add_defender_exclusion=true, the override is wiped
+	// (other two fields ignored).
+	bool has_default_add_defender_exclusion = 1;
+	bool default_add_defender_exclusion = 2;
+	bool clear_default_add_defender_exclusion = 3;
+}
+message SetSettingsReply {
+	bool success = 1;
+	string error_message = 2;
+}
+
 // ---------- Streaming RPC messages ----------
 
 message CreateChildRequest {
 	string parent_vhdx_path = 1;
 	string child_vhdx_path = 2;
 	string mount_path = 3;
+	// Best-effort: register the new child VHDX file with Windows Defender exclusions.
+	bool add_defender_exclusion = 4;
 }
 message CreateChildReply {
 	bool success = 1;
 	string error_message = 2;
 	string volume_guid_path = 3;
+	// Non-fatal warning emitted when add_defender_exclusion=true but the
+	// registration step failed (e.g., blocked by Group Policy). Empty otherwise.
+	string defender_warning = 4;
 }
 message CreateChildStream {
 	oneof event {
@@ -169,11 +201,16 @@ message CreateVhdxRequest {
 	// Filesystem to format the volume with. Empty = service-side default (ReFS).
 	// Recognized values: "ReFS", "NTFS".
 	string filesystem = 6;
+	// Best-effort: register the new VHDX file with Windows Defender exclusions.
+	bool add_defender_exclusion = 7;
 }
 message CreateVhdxReply {
 	bool success = 1;
 	string error_message = 2;
 	string volume_guid_path = 3;
+	// Non-fatal warning emitted when add_defender_exclusion=true but the
+	// registration step failed (e.g., blocked by Group Policy). Empty otherwise.
+	string defender_warning = 4;
 }
 message CreateVhdxStream {
 	oneof event {
@@ -222,6 +259,8 @@ message ConvertFolderRequest {
 	// Filesystem to format the new VHDX with. Empty = service-side default (ReFS).
 	// Recognized values: "ReFS", "NTFS".
 	string filesystem = 7;
+	// Best-effort: register the new VHDX file with Windows Defender exclusions.
+	bool add_defender_exclusion = 8;
 }
 message ConvertFolderReply {
 	bool success = 1;
@@ -229,6 +268,9 @@ message ConvertFolderReply {
 	string staging_folder_path = 3;
 	int64 files_copied = 4;
 	int64 bytes_copied = 5;
+	// Non-fatal warning emitted when add_defender_exclusion=true but the
+	// registration step failed (e.g., blocked by Group Policy). Empty otherwise.
+	string defender_warning = 6;
 }
 message ConvertFolderStream {
 	oneof event {

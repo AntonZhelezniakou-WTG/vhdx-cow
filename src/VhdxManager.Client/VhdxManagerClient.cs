@@ -35,10 +35,25 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 	public Task<ListMountsReply> ListMountsAsync(CancellationToken ct = default)
 		=> SafeUnaryAsync(t => client.ListMountsAsync(new ListMountsRequest(), cancellationToken: t).ResponseAsync, ct);
 
+	public Task<GetSettingsReply> GetSettingsAsync(CancellationToken ct = default)
+		=> SafeUnaryAsync(t => client.GetSettingsAsync(new GetSettingsRequest(), cancellationToken: t).ResponseAsync, ct);
+
+	public Task<SetSettingsReply> SetSettingsAsync(
+		bool? defaultAddDefenderExclusion,
+		bool clearAddDefenderExclusion,
+		CancellationToken ct = default)
+		=> SafeUnaryAsync(t => client.SetSettingsAsync(new SetSettingsRequest
+		{
+			HasDefaultAddDefenderExclusion = defaultAddDefenderExclusion.HasValue,
+			DefaultAddDefenderExclusion = defaultAddDefenderExclusion ?? false,
+			ClearDefaultAddDefenderExclusion = clearAddDefenderExclusion,
+		}, cancellationToken: t).ResponseAsync, ct);
+
 	// ─── Streaming mutating operations ─────────────────────────────────────
 
 	public Task<CreateChildReply> CreateChildAsync(
 		string parentVhdxPath, string childVhdxPath, string mountPath,
+		bool addDefenderExclusion,
 		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.CreateChild(new CreateChildRequest
@@ -46,6 +61,7 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 				ParentVhdxPath = parentVhdxPath,
 				ChildVhdxPath = childVhdxPath,
 				MountPath = mountPath,
+				AddDefenderExclusion = addDefenderExclusion,
 			}, cancellationToken: t),
 			s => s.EventCase == CreateChildStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == CreateChildStream.EventOneofCase.Final ? s.Final : null,
@@ -80,6 +96,7 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 
 	public Task<CreateVhdxReply> CreateVhdxAsync(
 		string vhdxPath, long sizeBytes, bool dynamic, string volumeLabel, string mountPath, string filesystem,
+		bool addDefenderExclusion,
 		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.CreateVhdx(new CreateVhdxRequest
@@ -90,6 +107,7 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 				VolumeLabel = volumeLabel,
 				MountPath = mountPath,
 				Filesystem = filesystem,
+				AddDefenderExclusion = addDefenderExclusion,
 			}, cancellationToken: t),
 			s => s.EventCase == CreateVhdxStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == CreateVhdxStream.EventOneofCase.Final ? s.Final : null,
@@ -119,6 +137,7 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 
 	public Task<ConvertFolderReply> ConvertFolderAsync(
 		string folderPath, string vhdxPath, long sizeBytes, bool dynamic, string volumeLabel, string filesystem, bool deleteStaging,
+		bool addDefenderExclusion,
 		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.ConvertFolder(new ConvertFolderRequest
@@ -130,6 +149,7 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 				VolumeLabel = volumeLabel,
 				Filesystem = filesystem,
 				DeleteStaging = deleteStaging,
+				AddDefenderExclusion = addDefenderExclusion,
 			}, cancellationToken: t),
 			s => s.EventCase == ConvertFolderStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == ConvertFolderStream.EventOneofCase.Final ? s.Final : null,

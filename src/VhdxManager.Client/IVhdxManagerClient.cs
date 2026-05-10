@@ -22,12 +22,22 @@ public interface IVhdxManagerClient : IDisposable
 
 	Task<ListMountsReply> ListMountsAsync(CancellationToken ct = default);
 
+	/// <summary>Reads the persisted service-side defaults (e.g. add-defender-exclusion).</summary>
+	Task<GetSettingsReply> GetSettingsAsync(CancellationToken ct = default);
+
+	/// <summary>Writes service-side defaults. Pass clearAddDefenderExclusion=true to wipe the override.</summary>
+	Task<SetSettingsReply> SetSettingsAsync(
+		bool? defaultAddDefenderExclusion,
+		bool clearAddDefenderExclusion,
+		CancellationToken ct = default);
+
 	// ---- Streaming mutating operations ----
 
 	Task<CreateChildReply> CreateChildAsync(
 		string parentVhdxPath,
 		string childVhdxPath,
 		string mountPath,
+		bool addDefenderExclusion,
 		Action<ProgressEvent>? onProgress = null,
 		CancellationToken ct = default);
 
@@ -57,6 +67,7 @@ public interface IVhdxManagerClient : IDisposable
 		string volumeLabel,
 		string mountPath,
 		string filesystem,
+		bool addDefenderExclusion,
 		Action<ProgressEvent>? onProgress = null,
 		CancellationToken ct = default);
 
@@ -83,6 +94,7 @@ public interface IVhdxManagerClient : IDisposable
 		string volumeLabel,
 		string filesystem,
 		bool deleteStaging,
+		bool addDefenderExclusion,
 		Action<ProgressEvent>? onProgress = null,
 		CancellationToken ct = default);
 }

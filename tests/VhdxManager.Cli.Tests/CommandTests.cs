@@ -107,10 +107,15 @@ public class CommandTests
 	[Test]
 	public async Task Init_Success_ExitCode0()
 	{
-		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
+		// init now also calls GetSettings to resolve the Defender default. Default
+		// reply (HasDefault=false) → CLI would prompt; but with --add-defender-exclusion
+		// passed below the prompt is bypassed.
+		mockClient.GetSettingsAsync(Arg.Any<CancellationToken>())
+			.Returns(new GetSettingsReply());
+		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new CreateChildReply { Success = true, VolumeGuidPath = @"\\?\Volume{abcd}\" });
 
-		var (exitCode, stdout, _) = await InvokeWithOutput(@"init --parent C:\p.vhdx --child C:\c.vhdx --mount C:\m");
+		var (exitCode, stdout, _) = await InvokeWithOutput(@"init --parent C:\p.vhdx --child C:\c.vhdx --mount C:\m --add-defender-exclusion false");
 
 		exitCode.Should().Be(0);
 		stdout.Should().Contain("Volume GUID");
@@ -119,10 +124,12 @@ public class CommandTests
 	[Test]
 	public async Task Init_ServerFailure_ExitCode1()
 	{
-		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
+		mockClient.GetSettingsAsync(Arg.Any<CancellationToken>())
+			.Returns(new GetSettingsReply());
+		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new CreateChildReply { Success = false, ErrorMessage = "path invalid" });
 
-		var (exitCode, _, stderr) = await InvokeWithOutput(@"init --parent C:\p.vhdx --child C:\c.vhdx --mount C:\m");
+		var (exitCode, _, stderr) = await InvokeWithOutput(@"init --parent C:\p.vhdx --child C:\c.vhdx --mount C:\m --add-defender-exclusion false");
 
 		exitCode.Should().Be(1);
 		stderr.Should().Contain("path invalid");

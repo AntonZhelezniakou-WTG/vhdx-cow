@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Grpc.Core;
 using VhdxManager.Contracts;
+using VhdxManager.Service.Configuration;
 using VhdxManager.Service.Security;
 using VhdxManager.Service.State;
 using VhdxManager.Service.VhdxOperations;
@@ -14,6 +15,8 @@ public sealed class VhdxGrpcService(
 	IFolderTransferOrchestrator folderTransferOrchestrator,
 	IStateStore stateStore,
 	PathValidator pathValidator,
+	IDefenderExclusionManager defenderExclusionManager,
+	IServiceSettingsStore settingsStore,
 	ILogger<VhdxGrpcService> logger) : VhdxService.VhdxServiceBase
 {
 	// ─── Read-only RPCs (no streaming) ─────────────────────────────────────
@@ -84,6 +87,40 @@ public sealed class VhdxGrpcService(
 		return reply;
 	}
 
+	public override Task<GetSettingsReply> GetSettings(GetSettingsRequest request, ServerCallContext context)
+	{
+		var current = settingsStore.GetDefaultAddDefenderExclusion();
+		return Task.FromResult(new GetSettingsReply
+		{
+			HasDefaultAddDefenderExclusion = current.HasValue,
+			DefaultAddDefenderExclusion = current ?? false,
+		});
+	}
+
+	public override async Task<SetSettingsReply> SetSettings(SetSettingsRequest request, ServerCallContext context)
+	{
+		try
+		{
+			// Tri-state collapse:
+			//   clear=true        → null (unset)
+			//   has=true, val=X   → X
+			//   has=false         → null (also clears)
+			bool? newValue = request.ClearDefaultAddDefenderExclusion
+				? null
+				: request.HasDefaultAddDefenderExclusion
+					? request.DefaultAddDefenderExclusion
+					: null;
+
+			await settingsStore.SetDefaultAddDefenderExclusionAsync(newValue, context.CancellationToken);
+			return new SetSettingsReply { Success = true };
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "SetSettings failed");
+			return new SetSettingsReply { Success = false, ErrorMessage = ex.Message };
+		}
+	}
+
 	// ─── Streaming RPCs ────────────────────────────────────────────────────
 
 	public override async Task CreateChild(
@@ -139,7 +176,18 @@ public sealed class VhdxGrpcService(
 			sw.Stop();
 			logger.LogInformation("CreateChild completed in {Duration}ms", sw.ElapsedMilliseconds);
 
-			await EmitFinal(responseStream, new CreateChildReply { Success = true, VolumeGuidPath = volumeGuidPath }, ct);
+			var defenderWarning = string.Empty;
+			if (request.AddDefenderExclusion)
+			{
+				defenderWarning = await TryAddDefenderExclusionAsync(reporter, request.ChildVhdxPath, ct);
+			}
+
+			await EmitFinal(responseStream, new CreateChildReply
+			{
+				Success = true,
+				VolumeGuidPath = volumeGuidPath,
+				DefenderWarning = defenderWarning,
+			}, ct);
 		}
 		catch (Exception ex)
 		{
@@ -415,8 +463,19 @@ public sealed class VhdxGrpcService(
 			sw.Stop();
 			logger.LogInformation("CreateVhdx completed in {Duration}ms: {Path}", sw.ElapsedMilliseconds, request.VhdxPath);
 
+			var defenderWarning = string.Empty;
+			if (request.AddDefenderExclusion)
+			{
+				defenderWarning = await TryAddDefenderExclusionAsync(reporter, request.VhdxPath, ct);
+			}
+
 			await EmitFinal(responseStream,
-				new CreateVhdxReply { Success = true, VolumeGuidPath = volumeGuidPath }, ct);
+				new CreateVhdxReply
+				{
+					Success = true,
+					VolumeGuidPath = volumeGuidPath,
+					DefenderWarning = defenderWarning,
+				}, ct);
 		}
 		catch (Exception ex)
 		{
@@ -567,6 +626,8 @@ public sealed class VhdxGrpcService(
 			request.FolderPath, request.VhdxPath, request.SizeBytes,
 			request.Dynamic, label, filesystem, request.DeleteStaging, ct);
 
+		var defenderWarning = string.Empty;
+
 		if (result.Success)
 		{
 			await reporter.CompletedAsync("Converting folder",
@@ -579,6 +640,11 @@ public sealed class VhdxGrpcService(
 				MountPath = request.FolderPath,
 				VolumeGuidPath = result.VolumeGuidPath,
 			}, ct);
+
+			if (request.AddDefenderExclusion)
+			{
+				defenderWarning = await TryAddDefenderExclusionAsync(reporter, request.VhdxPath, ct);
+			}
 		}
 		else
 		{
@@ -592,10 +658,44 @@ public sealed class VhdxGrpcService(
 			StagingFolderPath = result.StagingFolderPath,
 			FilesCopied = result.FilesCopied,
 			BytesCopied = result.BytesCopied,
+			DefenderWarning = defenderWarning,
 		}, ct);
 	}
 
 	// ─── Helpers ───────────────────────────────────────────────────────────
+
+	/// <summary>
+	/// Best-effort Defender exclusion step. Emits its own STARTED/COMPLETED/FAILED
+	/// progress events but never propagates the exception — Defender failures must
+	/// not fail the parent pipeline (the VHDX itself is already on disk).
+	/// Returns the warning text to embed in the final reply (empty on success).
+	/// </summary>
+	async Task<string> TryAddDefenderExclusionAsync<TStream>(
+		ProgressReporter<TStream> reporter,
+		string vhdxPath,
+		CancellationToken ct)
+	{
+		const string Step = "Adding Defender exclusion";
+		await reporter.StartedAsync(Step, vhdxPath, ct);
+		try
+		{
+			await defenderExclusionManager.AddExclusionAsync(vhdxPath, ct);
+			await reporter.CompletedAsync(Step, ct: ct);
+			return string.Empty;
+		}
+		catch (DefenderPolicyBlockedException ex)
+		{
+			logger.LogWarning("Defender exclusion blocked by policy for {Path}: {Message}", vhdxPath, ex.Message);
+			await reporter.FailedAsync(Step, ex.Message, ct);
+			return ex.Message;
+		}
+		catch (Exception ex)
+		{
+			logger.LogWarning(ex, "Defender exclusion failed for {Path}", vhdxPath);
+			await reporter.FailedAsync(Step, ex.Message, ct);
+			return ex.Message;
+		}
+	}
 
 	static Task EmitFinal(IServerStreamWriter<CreateChildStream> w, CreateChildReply r, CancellationToken ct)
 		=> w.WriteAsync(new CreateChildStream { Final = r }, ct);

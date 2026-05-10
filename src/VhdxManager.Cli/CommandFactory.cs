@@ -45,23 +45,36 @@ static class CommandFactory
 		var parentOption = new Option<string>("--parent") { Description = "Path to the parent VHDX file", Required = true };
 		var childOption = new Option<string>("--child") { Description = "Path for the new child VHDX file", Required = true };
 		var mountOption = new Option<string>("--mount") { Description = "Folder path to mount the child VHDX", Required = true };
+		// Nullable: unset → fall through to service default, then prompt.
+		var initAddDefenderExclusionOption = new Option<bool?>("--add-defender-exclusion")
+		{
+			Description = "Register the new child VHDX file with Windows Defender exclusions",
+		};
 
 		var initCommand = new Command("init", "Create a differencing VHDX and mount it to a worktree folder")
 		{
-			Options = { parentOption, childOption, mountOption },
+			Options = { parentOption, childOption, mountOption, initAddDefenderExclusionOption },
 		};
 		initCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
+				var addDefender = await DefenderExclusionResolver.ResolveAsync(
+					parseResult.GetValue(initAddDefenderExclusionOption), client, token);
+
 				using var progress = new ProgressRenderer();
 				var reply = await client.CreateChildAsync(
 					parseResult.GetValue(parentOption)!,
 					parseResult.GetValue(childOption)!,
 					parseResult.GetValue(mountOption)!,
+					addDefender,
 					progress.Handle, token);
 				if (reply.Success)
 				{
 					Console.WriteLine($"Volume GUID: {reply.VolumeGuidPath}");
+					if (!string.IsNullOrEmpty(reply.DefenderWarning))
+					{
+						Console.Error.WriteLine($"Warning: Defender exclusion not added: {reply.DefenderWarning}");
+					}
 					return 0;
 				}
 				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
@@ -238,6 +251,7 @@ static class CommandFactory
 		rootCommand.Subcommands.Add(unmountCommand);
 		rootCommand.Subcommands.Add(deleteCommand);
 		rootCommand.Subcommands.Add(ConvertCommand.Build(pipeNameOption, timeoutOption, clientFactory));
+		rootCommand.Subcommands.Add(ConfigCommand.Build(pipeNameOption, timeoutOption, clientFactory));
 
 		return rootCommand;
 	}

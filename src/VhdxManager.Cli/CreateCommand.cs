@@ -28,10 +28,16 @@ internal static class CreateCommand
 		{
 			Description = "Filesystem to format with: ReFS (default) or NTFS",
 		};
+		// Nullable so we can distinguish "user didn't say" from "user said no":
+		// unset → fall through to service default, then prompt.
+		var addDefenderExclusionOption = new Option<bool?>("--add-defender-exclusion")
+		{
+			Description = "Register the new VHDX file with Windows Defender exclusions",
+		};
 
 		var command = new Command("create", "Create a new standalone VHDX, partition + format, optionally mount.")
 		{
-			Options = { pathOption, sizeOption, labelOption, mountOption, dynamicOption, fixedOption, filesystemOption },
+			Options = { pathOption, sizeOption, labelOption, mountOption, dynamicOption, fixedOption, filesystemOption, addDefenderExclusionOption },
 		};
 
 		command.SetAction(async (parseResult, ct) =>
@@ -47,6 +53,7 @@ internal static class CreateCommand
 			var dyn = parseResult.GetValue(dynamicOption);
 			var fix = parseResult.GetValue(fixedOption);
 			var filesystem = parseResult.GetValue(filesystemOption);
+			var addDefenderExclusionRaw = parseResult.GetValue(addDefenderExclusionOption);
 
 			try
 			{
@@ -93,20 +100,29 @@ internal static class CreateCommand
 
 				using var client = clientFactory(pipeName, timeout);
 
+				// Defender exclusion: CLI flag → service default → interactive prompt.
+				// Resolved AFTER the client is up (we need the service to read settings).
+				var addDefender = await DefenderExclusionResolver.ResolveAsync(
+					addDefenderExclusionRaw, client, ct);
+
 				AnsiConsole.MarkupLine(
-					$"[bold]vhmgr create[/] [grey]({InteractivePrompt.FormatSize(sizeBytes)}, {(dynamic ? "dynamic" : "fixed")}, fs={fs}, label={label})[/]");
+					$"[bold]vhmgr create[/] [grey]({InteractivePrompt.FormatSize(sizeBytes)}, {(dynamic ? "dynamic" : "fixed")}, fs={fs}, label={label}, defender={addDefender})[/]");
 
 				// Per-step progress is rendered live by ProgressRenderer; the streaming
 				// RPC emits STARTED/COMPLETED/FAILED events for every internal step.
 				using var progress = new ProgressRenderer();
 				var resp = await client.CreateVhdxAsync(
-					path, sizeBytes, dynamic, label, mount, fs, progress.Handle, ct);
+					path, sizeBytes, dynamic, label, mount, fs, addDefender, progress.Handle, ct);
 
 				if (resp.Success)
 				{
 					if (!string.IsNullOrEmpty(resp.VolumeGuidPath))
 					{
 						AnsiConsole.MarkupLine($"  [grey]Volume:[/] {resp.VolumeGuidPath}");
+					}
+					if (!string.IsNullOrEmpty(resp.DefenderWarning))
+					{
+						AnsiConsole.MarkupLine($"[yellow]Warning:[/] Defender exclusion not added: {resp.DefenderWarning}");
 					}
 					return 0;
 				}

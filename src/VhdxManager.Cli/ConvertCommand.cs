@@ -28,6 +28,10 @@ internal static class ConvertCommand
 		{
 			Description = "Filesystem to format with: ReFS (default) or NTFS",
 		};
+		var addDefenderExclusionOption = new Option<bool?>("--add-defender-exclusion")
+		{
+			Description = "Register the new VHDX file with Windows Defender exclusions",
+		};
 
 		var command = new Command(
 			"convert",
@@ -36,7 +40,7 @@ internal static class ConvertCommand
 			Options =
 			{
 				folderOption, vhdxOption, sizeOption, labelOption,
-				dynamicOption, fixedOption, keepStagingOption, yesOption, filesystemOption,
+				dynamicOption, fixedOption, keepStagingOption, yesOption, filesystemOption, addDefenderExclusionOption,
 			},
 		};
 
@@ -55,6 +59,7 @@ internal static class ConvertCommand
 			var keepStaging = parseResult.GetValue(keepStagingOption);
 			var yes = parseResult.GetValue(yesOption);
 			var filesystem = parseResult.GetValue(filesystemOption);
+			var addDefenderExclusionRaw = parseResult.GetValue(addDefenderExclusionOption);
 
 			try
 			{
@@ -92,6 +97,13 @@ internal static class ConvertCommand
 					return 1;
 				}
 
+				using var client = clientFactory(pipeName, timeout);
+
+				// Resolve before the confirmation prompt so the user sees the final value
+				// in the summary block.
+				var addDefender = await DefenderExclusionResolver.ResolveAsync(
+					addDefenderExclusionRaw, client, ct);
+
 				if (!yes)
 				{
 					AnsiConsole.MarkupLine("");
@@ -101,6 +113,7 @@ internal static class ConvertCommand
 					AnsiConsole.MarkupLine($"[bold]Filesystem:[/]   {fs}");
 					AnsiConsole.MarkupLine($"[bold]Label:[/]        {label}");
 					AnsiConsole.MarkupLine($"[bold]Keep staging:[/] {keepStaging}");
+					AnsiConsole.MarkupLine($"[bold]Defender:[/]     {addDefender}");
 					AnsiConsole.MarkupLine("");
 					AnsiConsole.MarkupLine("[yellow]The folder will be renamed aside, a new VHDX created in its place, and contents copied back.[/]");
 					if (!InteractivePrompt.AskBool("Proceed?", defaultValue: false))
@@ -110,13 +123,12 @@ internal static class ConvertCommand
 					}
 				}
 
-				using var client = clientFactory(pipeName, timeout);
-
 				AnsiConsole.MarkupLine($"[bold]vhmgr convert[/]");
 				using var progress = new ProgressRenderer();
 				var resp = await client.ConvertFolderAsync(
 					folder, vhdx, sizeBytes, dynamic, label!, fs,
 					deleteStaging: !keepStaging,
+					addDefender,
 					progress.Handle, ct);
 
 				if (resp.Success)
@@ -126,6 +138,10 @@ internal static class ConvertCommand
 					if (keepStaging && !string.IsNullOrEmpty(resp.StagingFolderPath))
 					{
 						AnsiConsole.MarkupLine($"  [grey]Staging:[/] [yellow]{resp.StagingFolderPath}[/]");
+					}
+					if (!string.IsNullOrEmpty(resp.DefenderWarning))
+					{
+						AnsiConsole.MarkupLine($"[yellow]Warning:[/] Defender exclusion not added: {resp.DefenderWarning}");
 					}
 					return 0;
 				}
