@@ -384,3 +384,6 @@ tmpclaude-*-cwd
 # Publish output
 publish/
 
+# E2E test rig — generated VM credentials and staging artefacts (see tests/e2e/README.md)
+tests/e2e/.vm-creds.json
+tests/e2e/staging/
