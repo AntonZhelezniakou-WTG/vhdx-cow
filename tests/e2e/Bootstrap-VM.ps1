@@ -27,19 +27,50 @@
 .PARAMETER VmName
   Hyper-V VM display name. Default: VhdxManagerE2E.
 
+.PARAMETER IsoPath
+  Absolute path to the Windows 11 Enterprise Eval ISO. If omitted in
+  interactive mode the script prompts and shows a file picker. Required
+  when -Silent is set.
+
+.PARAMETER VmRoot
+  Absolute path to the parent directory that will hold the VM's disk and
+  config files. Used verbatim — no namespace appending. If omitted: falls
+  back to C:\HyperV\VhdxManagerE2E when C:\HyperV exists, otherwise opens a
+  folder picker (or fails in -Silent mode).
+
+.PARAMETER Silent
+  Non-interactive mode for CI/automation. Disables every Read-Host /
+  dialog / browser prompt. Required values must be supplied via -IsoPath
+  and -VmRoot; missing values cause the script to fail fast with a clear
+  message. Self-elevation is refused (caller must already be elevated).
+
 .PARAMETER Force
   Overwrite an existing VM with the same name (deletes its files). Without
   this flag, the script aborts if the VM already exists.
 
+.EXAMPLE
+  PS> .\Bootstrap-VM.ps1
+  Interactive run from any PowerShell. Self-elevates via UAC, prompts for
+  ISO and VM location.
+
+.EXAMPLE
+  PS> .\Bootstrap-VM.ps1 -Silent -IsoPath D:\ISOs\Win11_Eval.iso `
+  >>     -VmRoot D:\TestVMs\VhdxManagerE2E -Force
+  Fully scripted run for CI. Must be invoked from an already-elevated PS.
+
 .NOTES
-  Run from any PowerShell (PS5.1 or PS7+). The script self-elevates via UAC
-  if the current session isn't already running as Administrator.
+  Run from any PowerShell (PS5.1 or PS7+). In interactive mode the script
+  self-elevates via UAC if the current session isn't already running as
+  Administrator. In -Silent mode the caller must pre-elevate.
   Tested on Windows 11 24H2 with Hyper-V.
 #>
 
 [CmdletBinding()]
 param(
 	[string] $VmName = 'VhdxManagerE2E',
+	[string] $IsoPath,
+	[string] $VmRoot,
+	[switch] $Silent,
 	[switch] $Force
 )
 
@@ -53,10 +84,16 @@ Set-StrictMode -Version Latest
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 . (Join-Path $ScriptRoot 'lib\Helpers.ps1')
 
+# Bail out clearly on older PowerShell hosts before we touch anything that
+# might fail with a less helpful error. PS 5.1 ships with Windows 10 1607+
+# and Windows 11 — the practical floor for our Hyper-V usage.
+Assert-PowerShellVersion -MinimumVersion '5.1'
+
 # Self-elevate if launched from a normal PowerShell. The new elevated process
-# replays our exact arguments and -NoExit keeps its window open so the user
-# can read whatever happens. Returns immediately if we're already admin.
-Request-Elevation -ScriptPath $PSCommandPath -BoundParameters $PSBoundParameters
+# replays our exact arguments (including -Silent / -IsoPath / -VmRoot) and
+# -NoExit keeps its window open so the user can read whatever happens. In
+# -Silent mode self-elevation is refused — the caller must pre-elevate.
+Request-Elevation -ScriptPath $PSCommandPath -BoundParameters $PSBoundParameters -Silent:$Silent
 
 Test-HyperVPrereqs
 
@@ -75,10 +112,16 @@ foreach ($p in @($AutounattendTemplate, $FirstLogonScript)) {
 # 1) Resolve inputs
 # ----------------------------------------------------------------------------
 
-$IsoPath = Resolve-Iso
+$IsoPath = Resolve-Iso -ProvidedPath $IsoPath -Silent:$Silent
+if (-not $IsoPath) {
+	# Interactive run, user answered "no" or cancelled the picker. Resolve-Iso
+	# already printed the download URL. Nothing to retry/repair — exit cleanly.
+	Write-Host "Re-run this script after downloading the ISO." -ForegroundColor Yellow
+	exit 0
+}
 Write-Host "Using install ISO: $IsoPath" -ForegroundColor Green
 
-$VmRoot = Resolve-VmRoot
+$VmRoot = Resolve-VmRoot -ProvidedRoot $VmRoot -Silent:$Silent
 $VmDir = Join-Path $VmRoot $VmName
 $VhdxPath = Join-Path $VmDir 'os.vhdx'
 $AutounattendIsoPath = Join-Path $VmDir 'autounattend.iso'

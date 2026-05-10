@@ -28,7 +28,10 @@ tests/e2e/
 ## Host prerequisites
 
 * Windows 10/11 Pro/Enterprise or Server 2019+ with **Hyper-V enabled**.
-* PowerShell 5.1 or 7+ (script targets the lower bar).
+* **PowerShell 5.1 or newer** — 5.1 is the default on Win 10 (1607+) / Win 11
+  / Server 2016+, so you almost certainly already have it. PowerShell 7 is
+  *not* required (and not forced); the script checks the version on startup
+  and prints a download link if your host is somehow older.
 * ~50 GB free disk space for the VM and ISO.
 
 The script **self-elevates** if you launch it from a non-admin shell —
@@ -78,6 +81,44 @@ To wipe and redo from scratch:
 ```powershell
 .\Bootstrap-VM.ps1 -Force
 ```
+
+## Silent / scripted mode
+
+For CI and other unattended invocations, every input the script would
+normally prompt for can be passed on the command line, and the `-Silent`
+switch disables every interactive prompt / dialog / browser popup.
+
+```powershell
+# Must be run from an already-elevated PowerShell — silent mode refuses
+# to trigger UAC because UAC requires interaction.
+.\Bootstrap-VM.ps1 `
+    -Silent `
+    -IsoPath  'D:\ISOs\Win11_24H2_Eval.iso' `
+    -VmRoot   'D:\TestVMs\VhdxManagerE2E' `
+    -Force
+```
+
+| Parameter | Purpose | Required in `-Silent`? |
+|---|---|---|
+| `-IsoPath` | Path to the Win11 Eval ISO | **Yes** |
+| `-VmRoot` | Parent dir for the VM's disk + config (used verbatim, no namespace appending) | Only if `C:\HyperV` doesn't exist |
+| `-VmName` | Hyper-V VM display name (default `VhdxManagerE2E`) | No |
+| `-Force` | Wipe an existing VM with the same name | No |
+| `-Silent` | Disable all prompts; fail on missing required inputs | n/a |
+
+In silent mode the script:
+
+* Refuses to self-elevate (UAC needs a user) — invoke from an already-admin shell.
+* Validates `-IsoPath` exists and ends in `.iso` — throws otherwise.
+* Skips the "do you have the ISO?" / file picker / "open browser?" prompts.
+* Skips the folder-picker dialog for the VM root.
+
+Exit codes:
+
+* `0` — bootstrap succeeded.
+* non-zero — clear error message on stderr (missing required param, ISO
+  not found, Hyper-V not installed, UAC declined, guest first-boot
+  timed out, …).
 
 ## Resulting state
 
@@ -158,6 +199,11 @@ You clicked "No" on the UAC prompt, or your machine policy disallows UAC
 elevation for the current account. Re-run the script and accept the
 prompt, or right-click PowerShell → "Run as administrator" first to
 bypass the self-elevation step.
+
+**"PowerShell 5.1 or newer is required (current: ...)"**
+You're on Windows 7 / 8.1 or have a non-default PowerShell. Install the
+latest PowerShell 7 from the GitHub releases page printed by the script
+and re-run.
 
 **"Set-VMKeyProtector: ... HgsGuardian ..."**
 First run on this host — it creates a local guardian named

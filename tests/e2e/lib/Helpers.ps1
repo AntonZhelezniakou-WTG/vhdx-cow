@@ -22,6 +22,85 @@
 Set-StrictMode -Version Latest
 
 # ────────────────────────────────────────────────────────────────────────────
+# Console hyperlinks (OSC 8)
+# ────────────────────────────────────────────────────────────────────────────
+
+function Test-WindowsTerminal {
+	<#
+	.SYNOPSIS
+	  Returns $true when the current process runs inside Windows Terminal
+	  (as opposed to legacy ConHost / cmd.exe window).
+
+	.DESCRIPTION
+	  Windows Terminal sets WT_SESSION to a unique GUID per session — that's
+	  the documented detection mechanism. Important for OSC 8 / hyperlinks:
+	  WT supports them, ConHost does not.
+
+	  When a PS script self-elevates via `Start-Process -Verb RunAs`, the new
+	  admin process opens in ConHost by default. Request-Elevation works
+	  around this by routing the elevation through `wt.exe new-tab` when
+	  Windows Terminal is installed — in that case the elevated child sees
+	  WT_SESSION too and Format-Hyperlink emits real OSC 8 escapes.
+	#>
+	[CmdletBinding()]
+	param()
+	return [bool]$env:WT_SESSION
+}
+
+function Format-Hyperlink {
+	<#
+	.SYNOPSIS
+	  Wraps a URL in the OSC 8 hyperlink escape so Windows Terminal renders
+	  it as a Ctrl-clickable link. Falls back to plain text in legacy
+	  consoles (ConHost), which don't honour OSC 8.
+
+	.DESCRIPTION
+	  The full sequence is:  ESC ] 8 ;; URL ESC \  TEXT  ESC ] 8 ;; ESC \
+	  Emitting it in ConHost would still render the visible text correctly
+	  (the escape gets swallowed) but the link wouldn't be clickable, so we
+	  bother only when we know the terminal supports it.
+
+	.PARAMETER Url
+	  Target URL.
+	.PARAMETER Text
+	  Visible text. Defaults to the URL itself.
+	#>
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory)] [string] $Url,
+		[string] $Text
+	)
+	if (-not $Text) { $Text = $Url }
+	if (Test-WindowsTerminal) {
+		$e = [char]27
+		return "$e]8;;$Url$e\$Text$e]8;;$e\"
+	}
+	return $Text
+}
+
+function Open-Url {
+	<#
+	.SYNOPSIS
+	  Opens a URL in the user's default browser via Shell-Execute.
+
+	.DESCRIPTION
+	  `Start-Process <url>` invokes the shell handler for HTTP, which is the
+	  user's configured default browser. Works from elevated processes — the
+	  browser still launches as the interactive user (Windows shell handles
+	  the de-elevation transparently for protocol handlers).
+	#>
+	[CmdletBinding()]
+	param([Parameter(Mandatory)][string] $Url)
+	try {
+		Start-Process -FilePath $Url -ErrorAction Stop
+	}
+	catch {
+		Write-Warning "Could not open browser automatically: $($_.Exception.Message)"
+		Write-Host "Please copy the URL and open it manually." -ForegroundColor Yellow
+	}
+}
+
+# ────────────────────────────────────────────────────────────────────────────
 # ISO resolution
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -30,44 +109,120 @@ Set-StrictMode -Version Latest
 # the landing page and let the user grab the current download manually.
 $Script:Win11EvalUrl = 'https://www.microsoft.com/en-us/evalcenter/download-windows-11-enterprise'
 
-function Resolve-Iso {
+function Show-IsoPickerDialog {
 	<#
 	.SYNOPSIS
-	  Prompts the user for a Windows 11 Enterprise Eval ISO. Returns its full path.
-	.OUTPUTS
-	  String — absolute path to a readable .iso file.
+	  Displays a Windows OpenFileDialog scoped to .iso files. Returns the
+	  selected path, or $null if the user cancels.
+
+	.DESCRIPTION
+	  CheckFileExists + the .iso extension filter let the dialog itself
+	  enforce "must exist + must be an ISO", so the caller doesn't need
+	  the validation loop the old Read-Host path required.
+
+	  InitialDirectory defaults to %USERPROFILE%\Downloads, where eval ISOs
+	  usually land. Falls back to the user's profile root if that doesn't
+	  exist.
 	#>
 	[CmdletBinding()]
 	param()
+
+	Add-Type -AssemblyName System.Windows.Forms | Out-Null
+
+	$initialDir = Join-Path $env:USERPROFILE 'Downloads'
+	if (-not (Test-Path -LiteralPath $initialDir -PathType Container)) {
+		$initialDir = $env:USERPROFILE
+	}
+
+	$dialog = New-Object System.Windows.Forms.OpenFileDialog
+	$dialog.Title            = 'Select the Windows 11 Enterprise Eval ISO'
+	$dialog.Filter           = 'ISO image (*.iso)|*.iso'
+	$dialog.CheckFileExists  = $true
+	$dialog.Multiselect      = $false
+	$dialog.InitialDirectory = $initialDir
+
+	if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+		return $dialog.FileName
+	}
+	return $null
+}
+
+function Resolve-Iso {
+	<#
+	.SYNOPSIS
+	  Resolves the path to a Windows 11 Enterprise Eval ISO. Returns the path,
+	  or $null if the user has no ISO yet (caller should exit cleanly).
+
+	.PARAMETER ProvidedPath
+	  Optional pre-supplied path (from the calling script's -IsoPath parameter).
+	  If given, this function only validates and returns it — no prompts.
+
+	.PARAMETER Silent
+	  Non-interactive mode. If $true and no ProvidedPath is given, throws
+	  instead of prompting. Used by automated/CI invocations.
+
+	.OUTPUTS
+	  String absolute path to a readable .iso file, or $null.
+	#>
+	[CmdletBinding()]
+	param(
+		[string] $ProvidedPath,
+		[switch] $Silent
+	)
+
+	# Path supplied via parameter — validate and return.
+	if ($ProvidedPath) {
+		if (-not (Test-Path -LiteralPath $ProvidedPath -PathType Leaf)) {
+			throw "ISO not found: $ProvidedPath"
+		}
+		if (-not $ProvidedPath.ToLowerInvariant().EndsWith('.iso')) {
+			throw "Not an .iso file: $ProvidedPath"
+		}
+		return (Resolve-Path -LiteralPath $ProvidedPath).Path
+	}
+
+	# Silent mode without a path is a usage error: refuse to prompt.
+	if ($Silent) {
+		throw "ISO path is required in silent mode. Pass -IsoPath."
+	}
 
 	Write-Host ""
 	Write-Host "=== Windows 11 Enterprise Eval ISO ===" -ForegroundColor Cyan
 	$answer = Read-Host "Do you already have the ISO downloaded? (y/n)"
 	if ($answer -match '^(y|yes)$') {
-		while ($true) {
-			$path = Read-Host "Path to the .iso file"
-			$path = $path.Trim('"', ' ')
-			if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-				Write-Host "  Not found: $path" -ForegroundColor Yellow
-				continue
-			}
-			if (-not $path.ToLowerInvariant().EndsWith('.iso')) {
-				Write-Host "  Not an .iso file." -ForegroundColor Yellow
-				continue
-			}
-			return (Resolve-Path -LiteralPath $path).Path
+		$path = Show-IsoPickerDialog
+		if ($null -eq $path) {
+			Write-Host "ISO selection cancelled." -ForegroundColor Yellow
+			return $null
 		}
+		Write-Host "  Selected: $path" -ForegroundColor DarkGray
+		return $path
 	}
 
 	Write-Host ""
 	Write-Host "Download Windows 11 Enterprise (90-day evaluation) from:" -ForegroundColor Yellow
-	Write-Host "  $Script:Win11EvalUrl" -ForegroundColor White
+	# OSC 8 hyperlink in Windows Terminal (Ctrl-click), plain text in ConHost.
+	# When this script self-elevates, the elevated child runs in ConHost, so
+	# Format-Hyperlink will return plain text in that case — that's why we
+	# also auto-open the browser below as the universal fallback.
+	Write-Host ("  " + (Format-Hyperlink -Url $Script:Win11EvalUrl)) -ForegroundColor White
 	Write-Host ""
 	Write-Host "  - Pick the 'ISO - Enterprise (English, United States)' option."
 	Write-Host "  - Save the file anywhere on this host."
 	Write-Host "  - Re-run this script and answer 'y' on the prompt above."
 	Write-Host ""
-	throw "ISO not available. Re-run after downloading."
+
+	# Auto-open the browser unless the user explicitly declines. Default Y so
+	# Enter is the one-keystroke path. Works in any terminal — UAC-elevated
+	# ConHost included.
+	$open = Read-Host "Open the download page in your default browser now? [Y/n]"
+	if ([string]::IsNullOrWhiteSpace($open) -or $open -match '^(y|yes)$') {
+		Open-Url -Url $Script:Win11EvalUrl
+	}
+
+	# Returning $null — not throwing — because this is the documented
+	# "come back later" branch, not a failure. The caller decides what to do.
+	return $null
 }
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -81,13 +236,33 @@ function Resolve-VmRoot {
 	  will live.
 
 	.DESCRIPTION
-	  If C:\HyperV exists, uses C:\HyperV\VhdxManagerE2E. Otherwise opens a
-	  Windows folder-picker dialog and creates VhdxManagerE2E inside whatever
-	  folder the user picks.
+	  Resolution order:
+	    1. If $ProvidedRoot is given (from -VmRoot parameter), use it verbatim.
+	    2. If C:\HyperV exists, use C:\HyperV\VhdxManagerE2E.
+	    3. Silent mode: throw — the caller must provide -VmRoot.
+	    4. Otherwise open a folder-picker dialog; the chosen folder gets a
+	       VhdxManagerE2E subdirectory appended.
+
+	.PARAMETER ProvidedRoot
+	  Pre-supplied path; used as-is (no namespace appending). Pass when
+	  invoking from CI/scripts via -VmRoot.
+
+	.PARAMETER Silent
+	  Non-interactive mode. Forbid the folder-picker dialog.
 	#>
 	[CmdletBinding()]
-	param()
+	param(
+		[string] $ProvidedRoot,
+		[switch] $Silent
+	)
 
+	# 1. Explicit override via parameter — use literal path.
+	if ($ProvidedRoot) {
+		Write-Host "Using VM root: $ProvidedRoot" -ForegroundColor Green
+		return $ProvidedRoot
+	}
+
+	# 2. Convention: C:\HyperV → C:\HyperV\VhdxManagerE2E.
 	$default = 'C:\HyperV'
 	if (Test-Path -LiteralPath $default -PathType Container) {
 		$root = Join-Path $default 'VhdxManagerE2E'
@@ -95,6 +270,12 @@ function Resolve-VmRoot {
 		return $root
 	}
 
+	# 3. Silent mode without an explicit -VmRoot is a usage error.
+	if ($Silent) {
+		throw "C:\HyperV does not exist and -VmRoot was not provided. Pass -VmRoot in silent mode."
+	}
+
+	# 4. Interactive folder picker.
 	Write-Host "C:\HyperV does not exist. Please pick a parent directory for VM storage." -ForegroundColor Yellow
 	Add-Type -AssemblyName System.Windows.Forms
 	$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -302,8 +483,84 @@ function Wait-VmReady {
 }
 
 # ────────────────────────────────────────────────────────────────────────────
+# PowerShell version guard
+# ────────────────────────────────────────────────────────────────────────────
+
+function Assert-PowerShellVersion {
+	<#
+	.SYNOPSIS
+	  Aborts with a friendly error if the current PowerShell version is older
+	  than $MinimumVersion. Default minimum is 5.1 — the version that ships
+	  with Windows 10 1607+ / Windows 11 / Server 2016+.
+
+	.DESCRIPTION
+	  Our scripts deliberately avoid PowerShell 7-only syntax (ternary, null
+	  coalescing, pipeline chain operators, classes), so PS 5.1 is sufficient
+	  and we do NOT force users to install PS 7 to run the test rig.
+
+	  Older PowerShell versions (PS 4.0 on Win 8.1, PS 2.0 on Win 7) lack
+	  some of the .NET surface (RandomNumberGenerator.Create + GetBytes
+	  patterns) and Hyper-V cmdlets we depend on, so we refuse to run on
+	  those rather than fail with a confusing error mid-script.
+
+	.PARAMETER MinimumVersion
+	  Minimum acceptable [Version]. Default: 5.1.
+	#>
+	[CmdletBinding()]
+	param(
+		[Version] $MinimumVersion = ([Version]'5.1')
+	)
+	$current = $PSVersionTable.PSVersion
+	if ($current -ge $MinimumVersion) { return }
+
+	Write-Host ""
+	Write-Host "PowerShell $MinimumVersion or newer is required (current: $current)." -ForegroundColor Red
+	Write-Host ""
+	Write-Host "Windows 10 (1607+) and Windows 11 ship with PowerShell 5.1 by default." -ForegroundColor Yellow
+	Write-Host "If you ended up on an older host, install the latest PowerShell from:" -ForegroundColor Yellow
+	Write-Host ""
+	Write-Host ("  " + (Format-Hyperlink -Url 'https://github.com/PowerShell/PowerShell/releases/latest')) -ForegroundColor White
+	Write-Host ""
+	exit 1
+}
+
+# ────────────────────────────────────────────────────────────────────────────
 # Self-elevation
 # ────────────────────────────────────────────────────────────────────────────
+
+function ConvertTo-CmdLineArg {
+	<#
+	.SYNOPSIS
+	  Quotes a single argument for inclusion in a Windows command line so
+	  CommandLineToArgvW (the receiving process's parser) reproduces the
+	  original token verbatim.
+
+	.DESCRIPTION
+	  Critical for Start-Process. Despite the name, PowerShell's
+	  `Start-Process -ArgumentList @('a', 'b c')` joins the array with bare
+	  spaces — `a b c` — and does NOT add quotes around tokens containing
+	  whitespace. The receiving process (wt.exe, pwsh.exe, …) then re-tokenises
+	  on whitespace and gets `a`, `b`, `c` as three separate args. We quote
+	  here so the round-trip is faithful.
+
+	  Quoting rules (per the standard CRT parser):
+	    - empty string  → ""
+	    - has whitespace, double-quote, or paren → wrap in "...", escape any
+	      internal " as \"
+	    - otherwise pass through unchanged
+	#>
+	[CmdletBinding()]
+	param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Value)
+
+	if ([string]::IsNullOrEmpty($Value)) { return '""' }
+	# Parens trigger cmd.exe parsing oddities in some scenarios; safest to
+	# always quote when any of these appear.
+	if ($Value -match '[\s"()]') {
+		$escaped = $Value.Replace('"', '\"')
+		return "`"$escaped`""
+	}
+	return $Value
+}
 
 function Test-Elevated {
 	<#
@@ -330,6 +587,15 @@ function Request-Elevation {
 	  (powershell.exe for PS5.1, pwsh.exe for PS7+). Adds -NoExit so the
 	  elevated window stays open and the user can read the output.
 
+	  Launch strategy:
+	    * If wt.exe is on PATH, launch the elevated PowerShell *inside*
+	      Windows Terminal (`wt.exe new-tab pwsh.exe ...`) so the elevated
+	      session keeps OSC 8 hyperlinks, true colour, and the rest of the
+	      WT UX. UAC kicks in for wt.exe; the resulting WT window is fully
+	      elevated.
+	    * Otherwise, direct `Start-Process pwsh.exe -Verb RunAs` — opens in
+	      legacy ConHost, no hyperlinks, but works on every Windows.
+
 	  Caller pattern, near the top of the entry-point script:
 
 	      . .\lib\Helpers.ps1
@@ -342,16 +608,25 @@ function Request-Elevation {
 	.PARAMETER BoundParameters
 	  $PSBoundParameters from the caller. Each entry is forwarded as
 	  "-Key Value" (or just "-Key" for switches that are present).
+
+	.PARAMETER Silent
+	  When $true, refuse to self-elevate — UAC requires interaction and the
+	  caller (e.g. CI agent) must run elevated to begin with. Throws with a
+	  clear remediation message. No-op when already elevated.
 	#>
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory)] [string] $ScriptPath,
-		[hashtable] $BoundParameters = @{}
+		[hashtable] $BoundParameters = @{},
+		[switch] $Silent
 	)
 
 	if (Test-Elevated) { return }
 
-	Write-Host "Not elevated — re-launching with UAC prompt..." -ForegroundColor Yellow
+	if ($Silent) {
+		throw "Cannot self-elevate in silent mode (UAC requires interaction). " +
+			"Re-launch the script from an already-elevated PowerShell session."
+	}
 
 	# Use the same PS host the user invoked us with. (Get-Process -Id $PID).Path
 	# returns the actual exe — powershell.exe (5.1) or pwsh.exe (7+).
@@ -361,30 +636,56 @@ function Request-Elevation {
 		$hostExe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
 	}
 
-	$argList = @(
+	# Inner-process arguments: pwsh switches + -File + forwarded bound params.
+	# Every token gets pre-quoted via ConvertTo-CmdLineArg so Start-Process's
+	# bare-space join produces a command line CommandLineToArgvW can parse
+	# back into the same tokens.
+	$innerArgs = @(
 		'-NoProfile'
 		'-NoExit'                  # keep window open so user can read output
 		'-ExecutionPolicy', 'Bypass'
-		'-File', $ScriptPath
+		'-File', (ConvertTo-CmdLineArg $ScriptPath)
 	)
 	foreach ($key in $BoundParameters.Keys) {
 		$val = $BoundParameters[$key]
 		if ($val -is [System.Management.Automation.SwitchParameter]) {
-			if ($val.IsPresent) { $argList += "-$key" }
+			if ($val.IsPresent) { $innerArgs += "-$key" }
 		}
 		else {
-			$argList += "-$key"
-			# Quote anything containing whitespace so Start-Process passes it as one token.
-			$str = "$val"
-			if ($str -match '\s') { $argList += "`"$str`"" } else { $argList += $str }
+			$innerArgs += "-$key"
+			$innerArgs += (ConvertTo-CmdLineArg "$val")
 		}
 	}
 
-	try {
-		Start-Process -FilePath $hostExe -ArgumentList $argList -Verb RunAs -ErrorAction Stop | Out-Null
+	$wt = Get-Command -Name 'wt.exe' -ErrorAction SilentlyContinue
+	if ($wt) {
+		Write-Host "Not elevated — re-launching elevated in Windows Terminal..." -ForegroundColor Yellow
+		# wt.exe argv: [global-opts] action [action-opts] command [args...]
+		# `new-tab` is the action; everything after the title is the command
+		# WT runs in the new tab. WT uses a CommandLineToArgvW-compatible
+		# parser, so quoted multi-word args (e.g. "VhdxManager E2E (elevated)"
+		# or paths under "C:\Program Files\…") survive verbatim.
+		$wtArgs = @(
+			'new-tab',
+			'--title', (ConvertTo-CmdLineArg 'VhdxManager E2E (elevated)'),
+			(ConvertTo-CmdLineArg $hostExe)
+		) + $innerArgs
+
+		try {
+			Start-Process -FilePath $wt.Source -ArgumentList $wtArgs -Verb RunAs -ErrorAction Stop | Out-Null
+		}
+		catch {
+			throw "Elevation via Windows Terminal failed: $($_.Exception.Message)"
+		}
 	}
-	catch {
-		throw "Elevation failed (UAC declined or denied by policy): $($_.Exception.Message)"
+	else {
+		Write-Host "Not elevated — re-launching with UAC prompt (ConHost)..." -ForegroundColor Yellow
+		try {
+			Start-Process -FilePath $hostExe -ArgumentList $innerArgs -Verb RunAs -ErrorAction Stop | Out-Null
+		}
+		catch {
+			throw "Elevation failed (UAC declined or denied by policy): $($_.Exception.Message)"
+		}
 	}
 
 	# The elevated copy is now running in its own window. Exit the current
