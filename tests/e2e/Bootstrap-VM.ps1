@@ -6,17 +6,18 @@
   Run this once on a developer workstation that has Hyper-V enabled. The
   script will:
 
-    1. Verify prerequisites (admin elevation, Hyper-V installed, vTPM
-       available — Windows 11 install requires Secure Boot + TPM).
-    2. Resolve the Win11 Enterprise Eval ISO (asks user; offers download URL).
-    3. Resolve the VM root directory (C:\HyperV if it exists, otherwise a
+    1. Verify prerequisites (admin elevation, Hyper-V installed).
+    2. Resolve the Win11 Eval ISO (asks user; offers download URL if missing).
+    3. Resolve the VM root directory (C:\Hyper-V if it exists, otherwise a
        folder-picker dialog).
     4. Generate a random local-admin password and persist it as
        tests\e2e\.vm-creds.json (gitignored).
-    5. Materialise autounattend.xml from the template (substitutes the password)
-       and pack it together with FirstLogon.ps1 into autounattend.iso.
-    6. Create the VM (Gen2, 2 vCPU, 4GB dynamic RAM, 32GB OS VHDX, vTPM,
-       Secure Boot, no networking, both ISOs attached).
+    5. Materialise autounattend.xml from the template (substitutes the
+       password) and pack it together with FirstLogon.ps1 into
+       autounattend.iso.
+    6. Create a Gen1 (BIOS) VM with the install ISO + autounattend ISO
+       attached. Win11 hardware checks (TPM 2.0, Secure Boot, CPU/RAM/
+       storage) are bypassed via registry tweaks injected during WinPE.
     7. Start it. Block until the guest writes C:\Setup\boot-complete.flag.
     8. Shut down cleanly, detach the install ISO, take checkpoint
        'pre-install-clean'.
@@ -24,19 +25,43 @@
   After this script returns successfully you have a Hyper-V VM ready for
   test fixtures to install the MSI against.
 
+  Why Gen1 and not Gen2:
+    Gen2 + UEFI Secure Boot rejects the bootloader on some Windows ISOs
+    (notably LTSC Eval ISOs after Microsoft's August 2024 DBX update
+    revoked older Windows bootloaders for the BlackLotus mitigation),
+    producing a "boot loader failed" / "signed image's hash is not allowed
+    (DB)" error. Disabling Secure Boot on Gen2 doesn't fully fix it
+    because the bootloaders themselves expect a signed boot environment.
+    Gen1 is BIOS-only — there's no signature check at all, so any ISO
+    that happens to be UEFI-only-troublesome boots cleanly. The trade-off
+    (no vTPM, no Secure Boot inside the VM) is irrelevant to the MSI
+    under test.
+
 .PARAMETER VmName
   Hyper-V VM display name. Default: VhdxManagerE2E.
 
 .PARAMETER IsoPath
-  Absolute path to the Windows 11 Enterprise Eval ISO. If omitted in
-  interactive mode the script prompts and shows a file picker. Required
-  when -Silent is set.
+  Absolute path to the Windows 11 Eval ISO. If omitted in interactive mode
+  the script shows a file picker. Required when -Silent is set.
 
 .PARAMETER VmRoot
-  Absolute path to the parent directory that will hold the VM's disk and
-  config files. Used verbatim — no namespace appending. If omitted: falls
-  back to C:\HyperV\VhdxManagerE2E when C:\HyperV exists, otherwise opens a
-  folder picker (or fails in -Silent mode).
+  Absolute path to the parent directory under which the VM subdirectory is
+  created. The VM's files land in <VmRoot>\<VmName> (e.g. passing
+  C:\Hyper-V yields C:\Hyper-V\VhdxManagerE2E). If omitted: falls back to
+  C:\Hyper-V when it exists, otherwise opens a folder picker (or fails in
+  -Silent mode).
+
+.PARAMETER ImageName
+  WIM image name inside the ISO (the value passed to <ImageInstall> in
+  autounattend.xml). When omitted, the script mounts the ISO briefly,
+  enumerates available images, and:
+    * uses the only image if there's exactly one,
+    * otherwise auto-picks a common Eval/Enterprise SKU
+      ('Windows 11 Enterprise', 'Windows 11 Enterprise LTSC Evaluation', …),
+    * otherwise prompts the user to pick (interactive) or fails with a
+      list (silent mode).
+  Pass this only if you need to override the auto-selection (e.g. install
+  Pro instead of Enterprise on an ISO that has both).
 
 .PARAMETER Silent
   Non-interactive mode for CI/automation. Disables every Read-Host /
@@ -45,8 +70,10 @@
   message. Self-elevation is refused (caller must already be elevated).
 
 .PARAMETER Force
-  Overwrite an existing VM with the same name (deletes its files). Without
-  this flag, the script aborts if the VM already exists.
+  Skip confirmation and delete an existing VM (and any stale files in its
+  directory) without prompting. In interactive mode the script otherwise
+  asks "Remove and recreate?" before destroying anything; in -Silent mode
+  -Force is REQUIRED to overwrite (CI must explicitly opt in to data loss).
 
 .EXAMPLE
   PS> .\Bootstrap-VM.ps1
@@ -55,8 +82,14 @@
 
 .EXAMPLE
   PS> .\Bootstrap-VM.ps1 -Silent -IsoPath D:\ISOs\Win11_Eval.iso `
-  >>     -VmRoot D:\TestVMs\VhdxManagerE2E -Force
+  >>     -VmRoot D:\TestVMs -Force
   Fully scripted run for CI. Must be invoked from an already-elevated PS.
+
+.EXAMPLE
+  PS> .\Bootstrap-VM.ps1 -IsoPath D:\ISOs\Win11_LTSC_Eval.iso `
+  >>     -ImageName 'Windows 11 Enterprise LTSC Evaluation'
+  Use when the ISO is the LTSC Evaluation edition (image name differs from
+  the standard Enterprise Eval ISO).
 
 .NOTES
   Run from any PowerShell (PS5.1 or PS7+). In interactive mode the script
@@ -70,6 +103,7 @@ param(
 	[string] $VmName = 'VhdxManagerE2E',
 	[string] $IsoPath,
 	[string] $VmRoot,
+	[string] $ImageName,
 	[switch] $Silent,
 	[switch] $Force
 )
@@ -114,12 +148,18 @@ foreach ($p in @($AutounattendTemplate, $FirstLogonScript)) {
 
 $IsoPath = Resolve-Iso -ProvidedPath $IsoPath -Silent:$Silent
 if (-not $IsoPath) {
-	# Interactive run, user answered "no" or cancelled the picker. Resolve-Iso
-	# already printed the download URL. Nothing to retry/repair — exit cleanly.
+	# Interactive run, user cancelled the picker. Resolve-Iso already printed
+	# the download URL. Nothing to retry/repair — exit cleanly.
 	Write-Host "Re-run this script after downloading the ISO." -ForegroundColor Yellow
 	exit 0
 }
 Write-Host "Using install ISO: $IsoPath" -ForegroundColor Green
+
+# Resolve which Windows edition to install. Mounts the ISO briefly to read
+# the WIM image list, then auto-picks (or prompts on ambiguity). Done up
+# front so we fail fast on bad ISOs / unrecognised editions before doing
+# the expensive VM setup.
+$ImageName = Resolve-ImageName -IsoPath $IsoPath -RequestedName $ImageName -Silent:$Silent
 
 $VmRoot = Resolve-VmRoot -ProvidedRoot $VmRoot -Silent:$Silent
 $VmDir = Join-Path $VmRoot $VmName
@@ -132,17 +172,39 @@ $StagingDir = Join-Path $VmDir 'autounattend-staging'
 # ----------------------------------------------------------------------------
 
 $existing = Get-VM -Name $VmName -ErrorAction SilentlyContinue
-if ($existing) {
-	if (-not $Force) {
-		throw "VM '$VmName' already exists. Use -Force to remove it and start over."
+$dirHasContent = (Test-Path -LiteralPath $VmDir) -and `
+	(Get-ChildItem -LiteralPath $VmDir -Force -ErrorAction SilentlyContinue)
+
+# If a previous run left state behind (registered VM and/or stale files in
+# VmDir), confirm with the user before destroying it. -Force skips the
+# prompt; -Silent without -Force is a hard error so CI never silently
+# wipes someone's VM.
+if (($existing -or $dirHasContent) -and -not $Force) {
+	$what = if ($existing) {
+		"VM '$VmName' already exists"
+	} else {
+		"VM directory '$VmDir' has stale files (no VM registered, but leftover content)"
 	}
+	if ($Silent) {
+		throw "$what. Pass -Force to remove it (silent mode requires explicit confirmation)."
+	}
+	Write-Host ""
+	Write-Host $what -ForegroundColor Yellow
+	$answer = Read-Host "Remove and recreate? [y/N]"
+	if ($answer -notmatch '^(y|yes)$') {
+		Write-Host "Aborted." -ForegroundColor Yellow
+		exit 0
+	}
+}
+
+if ($existing) {
 	Write-Host "Removing existing VM '$VmName'..." -ForegroundColor Yellow
 	if ($existing.State -ne 'Off') {
 		Stop-VM -Name $VmName -TurnOff -Force -ErrorAction SilentlyContinue
 	}
 	Remove-VM -Name $VmName -Force
 }
-if ($Force -and (Test-Path -LiteralPath $VmDir)) {
+if (Test-Path -LiteralPath $VmDir) {
 	Write-Host "Removing $VmDir..." -ForegroundColor Yellow
 	Remove-Item -LiteralPath $VmDir -Recurse -Force
 }
@@ -178,11 +240,7 @@ if (Test-Path -LiteralPath $StagingDir) { Remove-Item -LiteralPath $StagingDir -
 New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
 
 $xml = Get-Content -LiteralPath $AutounattendTemplate -Raw
-# {IMAGE_NAME} → the WIM image inside the Eval ISO. Microsoft's Eval ISO
-# typically ships 'Windows 11 Enterprise'. If your ISO is different, run
-#   Dism /Get-WimInfo /WimFile:<mounted ISO>\sources\install.wim
-# and override here.
-$xml = $xml.Replace('{IMAGE_NAME}', 'Windows 11 Enterprise')
+$xml = $xml.Replace('{IMAGE_NAME}', $ImageName)
 $xml = $xml.Replace('{PASSWORD}', $Password)
 $xml | Out-File -LiteralPath (Join-Path $StagingDir 'autounattend.xml') -Encoding utf8 -Force
 
@@ -193,21 +251,20 @@ New-IsoFromFolder -SourceFolder $StagingDir -IsoPath $AutounattendIsoPath -Volum
 Write-Host "  → $AutounattendIsoPath" -ForegroundColor Green
 
 # ----------------------------------------------------------------------------
-# 5) Create the VM
+# 5) Create the VM (Generation 1 — BIOS, no Secure Boot, no vTPM)
 # ----------------------------------------------------------------------------
 
-Write-Host "Creating VM '$VmName'..." -ForegroundColor Cyan
+Write-Host "Creating VM '$VmName' (Generation 1 / BIOS)..." -ForegroundColor Cyan
 # 32 GB dynamic OS disk — Win11 needs ~25GB after install; dynamic so we only
 # pay for what's actually used.
 New-VHD -Path $VhdxPath -SizeBytes 32GB -Dynamic | Out-Null
 
 $vm = New-VM `
 	-Name $VmName `
-	-Generation 2 `
+	-Generation 1 `
 	-MemoryStartupBytes 4GB `
 	-VHDPath $VhdxPath `
-	-Path $VmRoot `
-	-NoVMCheckpoint
+	-Path $VmRoot
 # Note: -SwitchName intentionally omitted → no virtual network adapter.
 # All host↔guest traffic flows over VMBus via PowerShell Direct.
 
@@ -221,31 +278,19 @@ Set-VM -Name $VmName `
 	-AutomaticStartAction Nothing `
 	-AutomaticStopAction TurnOff
 
-# Win11 requires Secure Boot + vTPM. Install the Microsoft UEFI cert + key
-# protector for the vTPM.
-Set-VMFirmware -VMName $VmName -EnableSecureBoot On -SecureBootTemplate 'MicrosoftWindows'
-$keyProtector = New-HgsKeyProtector -Owner (Get-HgsGuardian -Name 'UntrustedGuardian' -ErrorAction SilentlyContinue) `
-	-AllowUntrustedRoot -ErrorAction SilentlyContinue
-if (-not $keyProtector) {
-	# First-time setup: create the local "UntrustedGuardian" used for vTPM.
-	if (-not (Get-HgsGuardian -Name 'UntrustedGuardian' -ErrorAction SilentlyContinue)) {
-		New-HgsGuardian -Name 'UntrustedGuardian' -GenerateCertificates | Out-Null
-	}
-	$keyProtector = New-HgsKeyProtector -Owner (Get-HgsGuardian -Name 'UntrustedGuardian') -AllowUntrustedRoot
-}
-Set-VMKeyProtector -VMName $VmName -KeyProtector $keyProtector.RawData
-Enable-VMTPM -VMName $VmName
-
-# Attach both DVD drives:
-#   - Slot 0: Windows install ISO
-#   - Slot 1: autounattend ISO
+# Attach both DVD drives. Gen1 puts the boot VHD on IDE 0,0 by default;
+# DVDs go to the next available IDE slots:
+#   - First DVD (Win11 install ISO)  → IDE 0,1 or 1,0
+#   - Second DVD (autounattend ISO)  → next slot
 Add-VMDvdDrive -VMName $VmName -Path $IsoPath
 Add-VMDvdDrive -VMName $VmName -Path $AutounattendIsoPath
 
-# Boot order: first DVD (the Win11 ISO) before the empty hard drive.
-$winDvd = (Get-VMDvdDrive -VMName $VmName | Where-Object { $_.Path -eq $IsoPath })[0]
-$osDrv  = Get-VMHardDiskDrive -VMName $VmName
-Set-VMFirmware -VMName $VmName -BootOrder $winDvd, $osDrv
+# BIOS startup order (Gen1 only — Gen2 uses Set-VMFirmware -BootOrder).
+# 'CD' covers DVD drives. The BIOS scans CDs in attachment order; the install
+# ISO is attached first, so it gets tried first. The autounattend ISO isn't
+# bootable (built without an El Torito boot record) so even if scanned it
+# falls through cleanly.
+Set-VMBios -VMName $VmName -StartupOrder ('CD', 'IDE', 'LegacyNetworkAdapter', 'Floppy')
 
 Write-Host "VM created." -ForegroundColor Green
 
@@ -265,7 +310,8 @@ catch {
 	Write-Host "Open Hyper-V Manager → connect to '$VmName' to inspect manually." -ForegroundColor Yellow
 	Write-Host "Common causes:" -ForegroundColor Yellow
 	Write-Host "  - Wrong image name in autounattend.xml (mismatch with ISO contents)."
-	Write-Host "  - VM not booting from DVD (boot order)."
+	Write-Host "    Pass -ImageName <name> and re-run with -Force."
+	Write-Host "  - VM didn't boot from DVD (BIOS startup order issue)."
 	Write-Host "  - autounattend.iso missing FirstLogon.ps1 (rerun with -Force)."
 	throw
 }
@@ -289,11 +335,10 @@ while ((Get-VM -Name $VmName).State -ne 'Off') {
 }
 
 Write-Host "Detaching install media..." -ForegroundColor Cyan
-# Detach the Win11 ISO (we don't need it again). Keep autounattend.iso so
-# C:\Setup\FirstLogon.ps1 + log are accessible if we ever -Force re-bootstrap
-# without redownloading the OS ISO.
+# Detach the Win11 ISO (we don't need it again). Empty the autounattend slot
+# too — keep the drive but clear the ISO so subsequent boots don't see it.
 $winDvd = Get-VMDvdDrive -VMName $VmName | Where-Object { $_.Path -eq $IsoPath }
-if ($winDvd) { Remove-VMDvdDrive -VMObject $winDvd }
+if ($winDvd) { Remove-VMDvdDrive -VMName $VmName -ControllerNumber $winDvd.ControllerNumber -ControllerLocation $winDvd.ControllerLocation }
 $autoDvd = Get-VMDvdDrive -VMName $VmName | Where-Object { $_.Path -eq $AutounattendIsoPath }
 if ($autoDvd) { Set-VMDvdDrive -VMName $VmName -ControllerNumber $autoDvd.ControllerNumber `
 	-ControllerLocation $autoDvd.ControllerLocation -Path $null }
@@ -310,6 +355,7 @@ Write-Host "================================================================" -F
 Write-Host " VhdxManager E2E test VM is ready." -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host "  VM name        : $VmName"
+Write-Host "  Generation     : 1 (BIOS, no vTPM, no Secure Boot)"
 Write-Host "  Disk           : $VhdxPath"
 Write-Host "  Credentials    : $CredsPath"
 Write-Host "  Checkpoint     : pre-install-clean"

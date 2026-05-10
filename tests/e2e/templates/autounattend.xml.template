@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Windows 11 Enterprise unattended setup answer file for the VhdxManager E2E
-  test rig. Bootstrap-VM.ps1 substitutes {PASSWORD} before packing this file
-  into autounattend.iso.
+  Windows 11 unattended setup answer file for the VhdxManager E2E test rig.
+  Bootstrap-VM.ps1 substitutes {IMAGE_NAME} and {PASSWORD} before packing
+  this file into autounattend.iso.
+
+  Target: Generation 1 (BIOS) Hyper-V VM, MBR partitioning, no TPM, no
+  Secure Boot. Win11 Setup hardware checks for those are bypassed via
+  registry tweaks injected during WinPE — see the RunSynchronous block in
+  the windowsPE pass below.
 
   Goals:
     * Skip every OOBE prompt (region, keyboard, MSA login, telemetry, ...).
@@ -24,23 +29,60 @@
 			<UserLocale>en-US</UserLocale>
 		</component>
 		<component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+			<RunSynchronous>
+				<!--
+					Win11 hardware-check bypass. Without these keys, Setup refuses
+					to install on hardware that lacks TPM 2.0 / Secure Boot, which
+					Gen1 BIOS-mode Hyper-V VMs by definition lack. The keys must
+					be set BEFORE Setup inspects the firmware, hence WinPE pass.
+					BypassRAMCheck / BypassCPUCheck / BypassStorageCheck are
+					belt-and-braces — our 4GB / 2 vCPU / 32GB usually pass, but
+					LTSC builds occasionally tighten thresholds.
+				-->
+				<RunSynchronousCommand wcm:action="add">
+					<Order>1</Order>
+					<Path>cmd /c reg add "HKLM\SYSTEM\Setup\LabConfig" /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path>
+					<Description>Bypass TPM 2.0 check</Description>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>2</Order>
+					<Path>cmd /c reg add "HKLM\SYSTEM\Setup\LabConfig" /v BypassSecureBootCheck /t REG_DWORD /d 1 /f</Path>
+					<Description>Bypass Secure Boot check</Description>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>3</Order>
+					<Path>cmd /c reg add "HKLM\SYSTEM\Setup\LabConfig" /v BypassRAMCheck /t REG_DWORD /d 1 /f</Path>
+					<Description>Bypass RAM check</Description>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>4</Order>
+					<Path>cmd /c reg add "HKLM\SYSTEM\Setup\LabConfig" /v BypassCPUCheck /t REG_DWORD /d 1 /f</Path>
+					<Description>Bypass CPU check</Description>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>5</Order>
+					<Path>cmd /c reg add "HKLM\SYSTEM\Setup\LabConfig" /v BypassStorageCheck /t REG_DWORD /d 1 /f</Path>
+					<Description>Bypass storage check</Description>
+				</RunSynchronousCommand>
+			</RunSynchronous>
 			<DiskConfiguration>
+				<!--
+					MBR layout for BIOS boot (Gen1 has no UEFI):
+					  Partition 1: 100 MB NTFS, active, "System Reserved" (boot files)
+					  Partition 2: rest, NTFS, "Windows" (OS)
+					Setup writes bootmgr + BCD into partition 1.
+				-->
 				<Disk wcm:action="add">
 					<DiskID>0</DiskID>
 					<WillWipeDisk>true</WillWipeDisk>
 					<CreatePartitions>
 						<CreatePartition wcm:action="add">
 							<Order>1</Order>
-							<Type>EFI</Type>
-							<Size>300</Size>
+							<Type>Primary</Type>
+							<Size>100</Size>
 						</CreatePartition>
 						<CreatePartition wcm:action="add">
 							<Order>2</Order>
-							<Type>MSR</Type>
-							<Size>16</Size>
-						</CreatePartition>
-						<CreatePartition wcm:action="add">
-							<Order>3</Order>
 							<Type>Primary</Type>
 							<Extend>true</Extend>
 						</CreatePartition>
@@ -49,16 +91,13 @@
 						<ModifyPartition wcm:action="add">
 							<Order>1</Order>
 							<PartitionID>1</PartitionID>
-							<Format>FAT32</Format>
-							<Label>System</Label>
+							<Format>NTFS</Format>
+							<Label>System Reserved</Label>
+							<Active>true</Active>
 						</ModifyPartition>
 						<ModifyPartition wcm:action="add">
 							<Order>2</Order>
 							<PartitionID>2</PartitionID>
-						</ModifyPartition>
-						<ModifyPartition wcm:action="add">
-							<Order>3</Order>
-							<PartitionID>3</PartitionID>
 							<Format>NTFS</Format>
 							<Label>Windows</Label>
 							<Letter>C</Letter>
@@ -70,7 +109,7 @@
 				<OSImage>
 					<InstallTo>
 						<DiskID>0</DiskID>
-						<PartitionID>3</PartitionID>
+						<PartitionID>2</PartitionID>
 					</InstallTo>
 					<InstallFrom>
 						<MetaData wcm:action="add">

@@ -6,7 +6,7 @@
   Designed to be dot-sourced (`. .\lib\Helpers.ps1`). Provides:
     - Resolve-Iso             : ask user to point at a Win11 Eval ISO or
                                 offer to download from Microsoft.
-    - Resolve-VmRoot          : pick C:\HyperV if it exists, else folder dialog.
+    - Resolve-VmRoot          : pick C:\Hyper-V if it exists, else folder dialog.
     - New-RandomPassword      : crypto-random local-admin password.
     - New-IsoFromFolder       : pack a folder into an ISO9660+Joliet image
                                 using IMAPI2FS (no Windows ADK needed).
@@ -129,9 +129,23 @@ function Show-IsoPickerDialog {
 
 	Add-Type -AssemblyName System.Windows.Forms | Out-Null
 
-	$initialDir = Join-Path $env:USERPROFILE 'Downloads'
-	if (-not (Test-Path -LiteralPath $initialDir -PathType Container)) {
-		$initialDir = $env:USERPROFILE
+	# Resolve the real Downloads folder via the Shell KnownFolder API.
+	# This correctly handles cases where the user relocated Downloads to a
+	# different drive via Explorer → Properties → Location. A plain
+	# Join-Path $env:USERPROFILE 'Downloads' would miss those.
+	$initialDir = $env:USERPROFILE   # safe fallback
+	try {
+		$shell = New-Object -ComObject Shell.Application
+		$knownPath = $shell.NameSpace('shell:Downloads').Self.Path
+		[System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell) | Out-Null
+		if ($knownPath -and (Test-Path -LiteralPath $knownPath -PathType Container)) {
+			$initialDir = $knownPath
+		}
+	}
+	catch {
+		# Shell.Application unavailable (shouldn't happen on any supported
+		# Windows, but be defensive). Fall through to the $env:USERPROFILE
+		# fallback set above.
 	}
 
 	$dialog = New-Object System.Windows.Forms.OpenFileDialog
@@ -188,17 +202,17 @@ function Resolve-Iso {
 
 	Write-Host ""
 	Write-Host "=== Windows 11 Enterprise Eval ISO ===" -ForegroundColor Cyan
-	$answer = Read-Host "Do you already have the ISO downloaded? (y/n)"
-	if ($answer -match '^(y|yes)$') {
-		$path = Show-IsoPickerDialog
-		if ($null -eq $path) {
-			Write-Host "ISO selection cancelled." -ForegroundColor Yellow
-			return $null
-		}
+	Write-Host "A Windows 11 ISO is required to create the VM. Please select it in the file picker." -ForegroundColor White
+	Write-Host ""
+
+	$path = Show-IsoPickerDialog
+	if ($null -ne $path) {
 		Write-Host "  Selected: $path" -ForegroundColor DarkGray
 		return $path
 	}
 
+	# User closed/cancelled the picker — offer download.
+	Write-Host "No ISO selected." -ForegroundColor Yellow
 	Write-Host ""
 	Write-Host "Download Windows 11 Enterprise (90-day evaluation) from:" -ForegroundColor Yellow
 	# OSC 8 hyperlink in Windows Terminal (Ctrl-click), plain text in ConHost.
@@ -226,6 +240,138 @@ function Resolve-Iso {
 }
 
 # ────────────────────────────────────────────────────────────────────────────
+# WIM image-name resolution
+# ────────────────────────────────────────────────────────────────────────────
+
+function Get-WindowsIsoImages {
+	<#
+	.SYNOPSIS
+	  Briefly mounts a Windows install ISO, enumerates the images inside
+	  sources\install.wim, and dismounts. Does not leave the ISO mounted.
+
+	.OUTPUTS
+	  Array of objects with ImageIndex (int) and ImageName (string).
+	#>
+	[CmdletBinding()]
+	param([Parameter(Mandatory)] [string] $IsoPath)
+
+	$diskImage = Mount-DiskImage -ImagePath $IsoPath -PassThru
+	try {
+		# Mount-DiskImage is asynchronous — Get-Volume can return $null briefly.
+		$deadline = (Get-Date).AddSeconds(10)
+		do {
+			Start-Sleep -Milliseconds 200
+			$volume = $diskImage | Get-Volume -ErrorAction SilentlyContinue
+		} while ((-not $volume -or -not $volume.DriveLetter) -and (Get-Date) -lt $deadline)
+		if (-not $volume -or -not $volume.DriveLetter) {
+			throw "ISO mounted but volume not ready within 10s. Try manually: Mount-DiskImage -ImagePath '$IsoPath'"
+		}
+
+		$wimPath = Join-Path "$($volume.DriveLetter):" 'sources\install.wim'
+		if (-not (Test-Path -LiteralPath $wimPath)) {
+			throw "ISO has no sources\install.wim — is this a Windows install ISO?"
+		}
+		return @(Get-WindowsImage -ImagePath $wimPath | Select-Object ImageIndex, ImageName)
+	}
+	finally {
+		Dismount-DiskImage -ImagePath $IsoPath -ErrorAction SilentlyContinue | Out-Null
+	}
+}
+
+function Resolve-ImageName {
+	<#
+	.SYNOPSIS
+	  Determines which Windows image inside install.wim to install.
+
+	.DESCRIPTION
+	  Resolution order:
+	    1. If $RequestedName is given, validate it exists in the ISO.
+	    2. If the ISO contains a single image, use it (no prompt).
+	    3. Try a list of common Eval/Enterprise image names in priority
+	       order — these handle the vast majority of Microsoft Eval ISOs.
+	    4. Fall back to interactive picker; or fail with a clear list in
+	       -Silent mode.
+
+	.PARAMETER IsoPath
+	  Path to the Windows install ISO. The ISO is mounted briefly and
+	  released before this function returns.
+
+	.PARAMETER RequestedName
+	  User-supplied -ImageName, or $null/empty to trigger auto-resolution.
+
+	.PARAMETER Silent
+	  Non-interactive mode: forbid the picker.
+	#>
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory)] [string] $IsoPath,
+		[string] $RequestedName,
+		[switch] $Silent
+	)
+
+	Write-Host "Inspecting ISO for available Windows images..." -ForegroundColor DarkGray
+	$images = Get-WindowsIsoImages -IsoPath $IsoPath
+
+	# 1. User passed an explicit name — validate and return it as-is.
+	if ($RequestedName) {
+		$match = $images | Where-Object { $_.ImageName -eq $RequestedName }
+		if (-not $match) {
+			$list = ($images | ForEach-Object { "  [$($_.ImageIndex)] $($_.ImageName)" }) -join [Environment]::NewLine
+			throw "Image '$RequestedName' not found in $IsoPath.$([Environment]::NewLine)Available images:$([Environment]::NewLine)$list"
+		}
+		Write-Host "Using image: '$RequestedName'" -ForegroundColor Green
+		return $RequestedName
+	}
+
+	# 2. Single-image ISO → use it without prompting.
+	if ($images.Count -eq 1) {
+		Write-Host "ISO contains a single image: '$($images[0].ImageName)'" -ForegroundColor Green
+		return $images[0].ImageName
+	}
+
+	# 3. Multiple images → try common defaults in priority order. The first
+	#    two cover the standard Win11 Enterprise Eval and the LTSC Eval —
+	#    the two ISOs people actually feed this script. The rest are
+	#    pragmatic fallbacks for less-common SKUs.
+	$candidates = @(
+		'Windows 11 Enterprise'
+		'Windows 11 Enterprise LTSC Evaluation'
+		'Windows 11 Enterprise Evaluation'
+		'Windows 11 Pro'
+		'Windows 11 Pro Evaluation'
+		'Windows 11 Education'
+	)
+	foreach ($c in $candidates) {
+		if ($images | Where-Object { $_.ImageName -eq $c }) {
+			Write-Host "Auto-selected image: '$c'" -ForegroundColor Green
+			return $c
+		}
+	}
+
+	# 4. Ambiguous — interactive picker, or fail in -Silent.
+	if ($Silent) {
+		$list = ($images | ForEach-Object { "  [$($_.ImageIndex)] $($_.ImageName)" }) -join [Environment]::NewLine
+		throw "Cannot auto-select an image (no common default matches). Pass -ImageName.$([Environment]::NewLine)Available images:$([Environment]::NewLine)$list"
+	}
+
+	Write-Host ""
+	Write-Host "ISO contains multiple images:" -ForegroundColor Cyan
+	for ($i = 0; $i -lt $images.Count; $i++) {
+		Write-Host ("  [{0}] {1}" -f ($i + 1), $images[$i].ImageName) -ForegroundColor White
+	}
+	$chosen = $null
+	while (-not $chosen) {
+		$answer = Read-Host "Pick one (1-$($images.Count))"
+		$n = 0
+		if ([int]::TryParse($answer, [ref]$n) -and $n -ge 1 -and $n -le $images.Count) {
+			$chosen = $images[$n - 1].ImageName
+		}
+	}
+	Write-Host "Using image: '$chosen'" -ForegroundColor Green
+	return $chosen
+}
+
+# ────────────────────────────────────────────────────────────────────────────
 # VM-root resolution
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -238,14 +384,16 @@ function Resolve-VmRoot {
 	.DESCRIPTION
 	  Resolution order:
 	    1. If $ProvidedRoot is given (from -VmRoot parameter), use it verbatim.
-	    2. If C:\HyperV exists, use C:\HyperV\VhdxManagerE2E.
+	    2. If C:\Hyper-V exists, use C:\Hyper-V (the VM itself lands in
+	       C:\Hyper-V\<VmName> once Bootstrap-VM.ps1 appends $VmName).
 	    3. Silent mode: throw — the caller must provide -VmRoot.
-	    4. Otherwise open a folder-picker dialog; the chosen folder gets a
-	       VhdxManagerE2E subdirectory appended.
+	    4. Otherwise open a folder-picker dialog; the chosen folder is returned
+	       as-is (Bootstrap-VM.ps1 appends <VmName> to get the VM directory).
 
 	.PARAMETER ProvidedRoot
-	  Pre-supplied path; used as-is (no namespace appending). Pass when
-	  invoking from CI/scripts via -VmRoot.
+	  Pre-supplied parent path; returned as-is. The caller (Bootstrap-VM.ps1)
+	  appends the VM name to derive the per-VM directory. Pass when invoking
+	  from CI/scripts via -VmRoot.
 
 	.PARAMETER Silent
 	  Non-interactive mode. Forbid the folder-picker dialog.
@@ -262,21 +410,21 @@ function Resolve-VmRoot {
 		return $ProvidedRoot
 	}
 
-	# 2. Convention: C:\HyperV → C:\HyperV\VhdxManagerE2E.
-	$default = 'C:\HyperV'
+	# 2. Convention: C:\Hyper-V exists → use it as the parent; Bootstrap-VM.ps1
+	#    appends $VmName so the VM lives at C:\Hyper-V\<VmName>.
+	$default = 'C:\Hyper-V'
 	if (Test-Path -LiteralPath $default -PathType Container) {
-		$root = Join-Path $default 'VhdxManagerE2E'
-		Write-Host "Using VM root: $root" -ForegroundColor Green
-		return $root
+		Write-Host "Using VM root: $default" -ForegroundColor Green
+		return $default
 	}
 
 	# 3. Silent mode without an explicit -VmRoot is a usage error.
 	if ($Silent) {
-		throw "C:\HyperV does not exist and -VmRoot was not provided. Pass -VmRoot in silent mode."
+		throw "C:\Hyper-V does not exist and -VmRoot was not provided. Pass -VmRoot in silent mode."
 	}
 
 	# 4. Interactive folder picker.
-	Write-Host "C:\HyperV does not exist. Please pick a parent directory for VM storage." -ForegroundColor Yellow
+	Write-Host "C:\Hyper-V does not exist. Please pick a parent directory for VM storage." -ForegroundColor Yellow
 	Add-Type -AssemblyName System.Windows.Forms
 	$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
 	$dialog.Description = 'Pick a parent directory for VhdxManagerE2E (~40GB free space recommended)'
@@ -285,7 +433,7 @@ function Resolve-VmRoot {
 	if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
 		throw "VM-root selection cancelled."
 	}
-	$root = Join-Path $dialog.SelectedPath 'VhdxManagerE2E'
+	$root = $dialog.SelectedPath
 	Write-Host "Using VM root: $root" -ForegroundColor Green
 	return $root
 }
@@ -475,7 +623,7 @@ function Wait-VmReady {
 		}
 		catch {
 			# Expected during install / pre-OOBE / WinRM not yet up.
-			Write-Host "  Poll #$poll`: $($_.Exception.Message.Split([char]10)[0])" -ForegroundColor DarkGray
+			Write-Host "  Poll #$poll`: guest not yet reachable — OS install in progress..." -ForegroundColor DarkGray
 		}
 		Start-Sleep -Seconds $PollIntervalSeconds
 	}
@@ -723,4 +871,5 @@ function Test-HyperVPrereqs {
 	if (-not (Get-Command -Name Set-VMKeyProtector -ErrorAction SilentlyContinue)) {
 		Write-Warning "Set-VMKeyProtector not available. Win11 install will fail without vTPM."
 	}
+
 }
