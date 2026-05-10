@@ -53,14 +53,14 @@ static class CommandFactory
 		initCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
+				using var progress = new ProgressRenderer();
 				var reply = await client.CreateChildAsync(
 					parseResult.GetValue(parentOption)!,
 					parseResult.GetValue(childOption)!,
 					parseResult.GetValue(mountOption)!,
-					token);
+					progress.Handle, token);
 				if (reply.Success)
 				{
-					Console.WriteLine($"Child VHDX created and mounted at {parseResult.GetValue(mountOption)}");
 					Console.WriteLine($"Volume GUID: {reply.VolumeGuidPath}");
 					return 0;
 				}
@@ -77,12 +77,10 @@ static class CommandFactory
 		resetCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
-				var reply = await client.ResetChildAsync(parseResult.GetValue(resetChildOption)!, token);
-				if (reply.Success)
-				{
-					Console.WriteLine("Child VHDX reset to parent state");
-					return 0;
-				}
+				using var progress = new ProgressRenderer();
+				var reply = await client.ResetChildAsync(
+					parseResult.GetValue(resetChildOption)!, progress.Handle, token);
+				if (reply.Success) return 0;
 				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
 				return 1;
 			}));
@@ -96,12 +94,10 @@ static class CommandFactory
 		cleanupCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
-				var reply = await client.DetachAsync(parseResult.GetValue(cleanupChildOption)!, token);
-				if (reply.Success)
-				{
-					Console.WriteLine("Child VHDX detached and deleted");
-					return 0;
-				}
+				using var progress = new ProgressRenderer();
+				var reply = await client.DetachAsync(
+					parseResult.GetValue(cleanupChildOption)!, progress.Handle, token);
+				if (reply.Success) return 0;
 				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
 				return 1;
 			}));
@@ -133,10 +129,12 @@ static class CommandFactory
 		publishCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
-				var reply = await client.PublishAsync(parseResult.GetValue(overlayOption)!, token);
+				using var progress = new ProgressRenderer();
+				var reply = await client.PublishAsync(
+					parseResult.GetValue(overlayOption)!, progress.Handle, token);
 				if (reply.Success)
 				{
-					Console.WriteLine($"Publish completed. Children recreated: {reply.ChildrenRecreated}");
+					Console.WriteLine($"Children recreated: {reply.ChildrenRecreated}");
 					return 0;
 				}
 				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
@@ -176,13 +174,14 @@ static class CommandFactory
 		mountCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
+				using var progress = new ProgressRenderer();
 				var reply = await client.AttachAndMountAsync(
 					parseResult.GetValue(mountVhdxOption)!,
 					parseResult.GetValue(mountFolderOption)!,
-					token);
+					progress.Handle, token);
 				if (reply.Success)
 				{
-					Console.WriteLine($"Mounted to {parseResult.GetValue(mountFolderOption)} (volume {reply.VolumeGuidPath})");
+					Console.WriteLine($"Volume GUID: {reply.VolumeGuidPath}");
 					return 0;
 				}
 				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
@@ -198,32 +197,30 @@ static class CommandFactory
 		unmountCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
-				var reply = await client.UnmountAndDetachAsync(parseResult.GetValue(unmountVhdxOption)!, token);
-				if (reply.Success)
-				{
-					Console.WriteLine("VHDX unmounted and detached (file kept).");
-					return 0;
-				}
+				using var progress = new ProgressRenderer();
+				var reply = await client.UnmountAndDetachAsync(
+					parseResult.GetValue(unmountVhdxOption)!, progress.Handle, token);
+				if (reply.Success) return 0;
 				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
 				return 1;
 			}));
 
 		// --- delete (unmount + detach + delete file) ---
-		var deleteVhdxOption = new Option<string>("--path") { Description = "Path to the VHDX file to delete", Required = true };
+		// Path is a positional argument so the natural form works:
+		//     vhmgr delete C:\path\to\file.vhdx
+		var deleteVhdxArg = new Argument<string>("path") { Description = "Path to the VHDX file to delete" };
 		var deleteCommand = new Command("delete", "Unmount + detach + delete the VHDX file.")
 		{
-			Options = { deleteVhdxOption },
+			Arguments = { deleteVhdxArg },
 		};
 		deleteCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
 				// Delete reuses the existing destructive Detach RPC.
-				var reply = await client.DetachAsync(parseResult.GetValue(deleteVhdxOption)!, token);
-				if (reply.Success)
-				{
-					Console.WriteLine("VHDX detached and file deleted.");
-					return 0;
-				}
+				using var progress = new ProgressRenderer();
+				var reply = await client.DetachAsync(
+					parseResult.GetValue(deleteVhdxArg)!, progress.Handle, token);
+				if (reply.Success) return 0;
 				Console.Error.WriteLine($"Failed: {reply.ErrorMessage}");
 				return 1;
 			}));

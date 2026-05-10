@@ -13,8 +13,8 @@ namespace VhdxManager.Service.VhdxOperations;
 
 /// <summary>
 /// Initializes a freshly attached raw VHDX disk: GPT partition table, one
-/// primary basic-data partition, NTFS quick format. Pure Win32 P/Invoke,
-/// no external processes.
+/// primary basic-data partition, then a quick filesystem format (ReFS or NTFS).
+/// Win32 P/Invoke for partitioning, PowerShell shell-out for the format pass.
 /// </summary>
 [SupportedOSPlatform("windows5.1.2600")]
 [SuppressMessage("Interoperability", "CA1416", Justification = "Service is windows-only (net10.0-windows).")]
@@ -25,11 +25,13 @@ public sealed class Win32DiskInitializer(
 	const long PartitionAlignment = 1L * 1024 * 1024;        // align partition start to 1 MB
 	const long GptReservedTail = 1L * 1024 * 1024;           // leave 1 MB at the end for GPT backup header
 
-	public Task InitializeAndFormatAsync(string physicalDiskPath, string ntfsLabel, CancellationToken ct)
-		=> Task.Run(() => InitializeAndFormatCore(physicalDiskPath, ntfsLabel, ct), ct);
+	public Task InitializeAndFormatAsync(string physicalDiskPath, string label, string filesystem, CancellationToken ct)
+		=> Task.Run(() => InitializeAndFormatCore(physicalDiskPath, label, filesystem, ct), ct);
 
-	void InitializeAndFormatCore(string physicalDiskPath, string ntfsLabel, CancellationToken ct)
+	void InitializeAndFormatCore(string physicalDiskPath, string label, string filesystem, CancellationToken ct)
 	{
+		var fs = NormalizeFilesystem(filesystem);
+
 		var diskNumber = ParseDiskNumber(physicalDiskPath);
 		if (diskNumber == 0)
 		{
@@ -38,8 +40,8 @@ public sealed class Win32DiskInitializer(
 		}
 
 		logger.LogInformation(
-			"Initializing physical disk {DiskNumber} (path={Path}) with GPT + NTFS (label={Label})",
-				diskNumber, physicalDiskPath, ntfsLabel);
+			"Initializing physical disk {DiskNumber} (path={Path}) with GPT + {Filesystem} (label={Label})",
+				diskNumber, physicalDiskPath, fs, label);
 
 		using var diskHandle = OpenPhysicalDisk(physicalDiskPath);
 
@@ -72,8 +74,30 @@ public sealed class Win32DiskInitializer(
 			.GetAwaiter()
 			.GetResult();
 
-		FormatNtfs(volumeGuid, ntfsLabel);
-		logger.LogInformation("Disk {DiskNumber} initialized and formatted.", diskNumber);
+		FormatVolume(volumeGuid, label, fs);
+		logger.LogInformation("Disk {DiskNumber} initialized and formatted as {Filesystem}.", diskNumber, fs);
+	}
+
+	/// <summary>
+	/// Validates and canonicalises the requested filesystem name. Empty string
+	/// resolves to <c>ReFS</c> (project default). Anything outside the small
+	/// allow-list is rejected here rather than at PowerShell time so we get a
+	/// crisp error before any destructive disk work.
+	/// </summary>
+	static string NormalizeFilesystem(string filesystem)
+	{
+		if (string.IsNullOrWhiteSpace(filesystem))
+		{
+			return "ReFS";
+		}
+		return filesystem.Trim().ToUpperInvariant() switch
+		{
+			"REFS" => "ReFS",
+			"NTFS" => "NTFS",
+			_ => throw new ArgumentException(
+				$"Unsupported filesystem '{filesystem}'. Use 'ReFS' or 'NTFS'.",
+				nameof(filesystem)),
+		};
 	}
 
 	// ------------------------------------------------------------------ helpers
@@ -245,7 +269,7 @@ public sealed class Win32DiskInitializer(
 		}
 	}
 
-	void FormatNtfs(string volumeGuidPath, string label)
+	void FormatVolume(string volumeGuidPath, string label, string filesystem)
 	{
 		// Format-Volume wants "\\?\Volume{...}\" — must end with backslash.
 		var driveRoot = volumeGuidPath.TrimEnd('\\') + "\\";
@@ -257,10 +281,13 @@ public sealed class Win32DiskInitializer(
 		// STATUS_STACK_BUFFER_OVERRUN (0xc0000409). PowerShell's Format-Volume cmdlet
 		// (from the Storage module, ships with Windows) accepts a volume GUID path
 		// directly and is rock solid.
+		// `filesystem` has already been validated by NormalizeFilesystem to be one of
+		// the small allow-list {ReFS, NTFS}, so it is safe to inline here.
 		var script = string.Format(
 			System.Globalization.CultureInfo.InvariantCulture,
-			"$ErrorActionPreference='Stop'; Format-Volume -Path '{0}' -FileSystem NTFS -NewFileSystemLabel '{1}' -Confirm:$false -Force | Out-Null",
+			"$ErrorActionPreference='Stop'; Format-Volume -Path '{0}' -FileSystem {1} -NewFileSystemLabel '{2}' -Confirm:$false -Force | Out-Null",
 			driveRoot.Replace("'", "''", StringComparison.Ordinal),
+			filesystem,
 			safeLabel.Replace("'", "''", StringComparison.Ordinal));
 
 		var psi = new ProcessStartInfo
@@ -306,6 +333,6 @@ public sealed class Win32DiskInitializer(
 		}
 
 		logger.LogInformation(
-			"NTFS quick format completed for {Volume} (label={Label})", driveRoot, safeLabel);
+			"{Filesystem} quick format completed for {Volume} (label={Label})", filesystem, driveRoot, safeLabel);
 	}
 }

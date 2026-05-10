@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Custom UI flow that mirrors WixUI_Minimal but uses our own dialog
+	`VhdxEulaDlg` instead of the extension's `WelcomeEulaDlg`. The new dialog
+	is a verbatim copy of the wixext's WelcomeEulaDlg with one fix: the
+	LicenseAcceptedCheckBox now has Sunken="yes", which gives it an inset 3D
+	edge so its COLOR_WINDOW (white) label background looks like a deliberate
+	"sunken card" rather than a stray white rectangle on the surrounding
+	COLOR_BTNFACE (gray) dialog area.
+
+	Why a unique Id (not "WelcomeEulaDlg"):
+	  - WiX 5 doesn't expose a way to patch individual control attributes on
+	    dialogs from the WiX UI extension; the Dialog must be redefined.
+	  - The extension's `<Dialog Id="WelcomeEulaDlg">` is NOT marked `virtual`,
+	    so we cannot use the `override` access modifier to replace it (WIX7008).
+	  - Re-defining a dialog with the same Id conflicts at link time (WIX0091).
+	  - Therefore we use a unique Id, schedule it in InstallUISequence, and
+	    avoid referencing "WelcomeEulaDlg" anywhere — that keeps the extension's
+	    fragment from being pulled into the link at all.
+
+	The dialog body is a verbatim copy of:
+	  https://raw.githubusercontent.com/wixtoolset/wix/v5.0.2/src/ext/UI/wixlib/WelcomeEulaDlg.wxs
+	with a single attribute added — see the "★ FIX" comment.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+	<!-- Per-arch variant: hooks Print to the printing custom action shipped by the UI extension. -->
+	<?foreach WIXUIARCH in X86;X64;A64 ?>
+	<Fragment>
+		<UI Id="WixUI_VhdxManager_$(WIXUIARCH)">
+			<Publish Dialog="VhdxEulaDlg" Control="Print" Event="DoAction" Value="WixUIPrintEula_$(WIXUIARCH)" />
+		</UI>
+		<UIRef Id="WixUI_VhdxManager" />
+	</Fragment>
+	<?endforeach?>
+
+	<!-- Main UI: identical dialog flow to WixUI_Minimal. WelcomeEulaDlg lives in
+	     a separate fragment below; we deliberately don't <DialogRef> it here so
+	     that fragment is the one and only WelcomeEulaDlg in the linked output. -->
+	<Fragment>
+		<UI Id="WixUI_VhdxManager">
+			<TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+			<TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+			<TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+
+			<Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+
+			<DialogRef Id="ErrorDlg" />
+			<DialogRef Id="FatalError" />
+			<DialogRef Id="FilesInUse" />
+			<DialogRef Id="MsiRMFilesInUse" />
+			<DialogRef Id="PrepareDlg" />
+			<DialogRef Id="ProgressDlg" />
+			<DialogRef Id="ResumeDlg" />
+			<DialogRef Id="UserExit" />
+			<DialogRef Id="WelcomeDlg" />
+
+			<Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+
+			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" />
+
+			<Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+
+			<Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+			<Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+			<Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+
+			<Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="Installed AND PATCH" />
+			<Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2" Condition="Installed AND PATCH" />
+
+			<InstallUISequence>
+				<!-- Patch flow override (matches WixUI_Minimal); use VhdxEulaDlg since
+				     we don't pull in the extension's WelcomeEulaDlg. -->
+				<Show Dialog="override WelcomeDlg" Before="VhdxEulaDlg" Condition="Installed AND PATCH" />
+			</InstallUISequence>
+
+			<Property Id="ARPNOMODIFY" Value="1" />
+		</UI>
+
+		<UIRef Id="WixUI_Common" />
+	</Fragment>
+
+	<!-- VhdxEulaDlg — verbatim copy of the WiX 5 extension's WelcomeEulaDlg,
+	     with Sunken="yes" added to LicenseAcceptedCheckBox. Unique Id avoids
+	     a link-time clash with the extension's same-Id Dialog. -->
+	<Fragment>
+		<UI>
+			<!--
+				VhdxEulaDlg — license dialog WITHOUT the inline "I accept" checkbox.
+				The Install / InstallNoShield buttons are always enabled; clicking
+				either spawns VhdxEulaConfirmDlg (a small modal "Do you accept? Yes/No").
+				The original disk-space / rollback-cost branches are preserved but each
+				is now gated on `LicenseAccepted = "1"`, which is set only by the Yes
+				button of the confirmation modal. Saying No keeps the user on this
+				dialog so they can re-read or Cancel.
+			-->
+			<Dialog Id="VhdxEulaDlg" Width="370" Height="270" Title="!(loc.WelcomeEulaDlg_Title)">
+				<Control Id="Bitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="!(loc.WelcomeEulaDlgBitmap)" />
+				<Control Id="Title" Type="Text" X="130" Y="6" Width="225" Height="30" Transparent="yes" NoPrefix="yes" Text="!(loc.WelcomeEulaDlgTitle)" />
+				<Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+
+				<!-- The license RTF now extends the full height the checkbox used to occupy. -->
+				<Control Id="LicenseText" Type="ScrollableText" X="130" Y="36" Width="226" Height="190" Sunken="yes" TabSkip="no">
+					<Text SourceFile="!(wix.WixUILicenseRtf)" />
+				</Control>
+
+				<Control Id="Print" Type="PushButton" X="88" Y="243" Width="56" Height="17" Text="!(loc.WixUIPrint)" />
+				<Control Id="Back" Type="PushButton" X="156" Y="243" Width="56" Height="17" Disabled="yes" Text="!(loc.WixUIBack)" />
+
+				<!--
+					Install button publishes are intentionally minimal:
+					  1. spawn the Yes/No confirmation modal
+					  2. if user accepted (LicenseAccepted=1), close this dialog so MSI
+					     proceeds with the install.
+					The wixext default also wires SpawnWaitDialog for WaitForCostingDlg and
+					a tree of OutOfDiskSpace branches; we drop those because (a) costing for
+					this MSI is near-instant so the wait dialog adds nothing but a hang
+					risk on Win11, and (b) MSI will surface any real disk-space failure
+					during the file-copy phase anyway.
+				-->
+				<Control Id="Install" Type="PushButton" ElevationShield="yes" X="212" Y="243" Width="80" Height="17" Default="yes" Text="!(loc.WelcomeEulaDlgInstall)" Hidden="yes" ShowCondition="ALLUSERS">
+					<Publish Event="SpawnDialog" Value="VhdxEulaConfirmDlg" Order="1" />
+					<Publish Event="EndDialog" Value="Return" Order="2" Condition="LicenseAccepted = &quot;1&quot;" />
+				</Control>
+				<Control Id="InstallNoShield" Type="PushButton" ElevationShield="no" X="212" Y="243" Width="80" Height="17" Default="yes" Text="!(loc.WelcomeEulaDlgInstall)" Hidden="yes" ShowCondition="NOT ALLUSERS">
+					<Publish Event="SpawnDialog" Value="VhdxEulaConfirmDlg" Order="1" />
+					<Publish Event="EndDialog" Value="Return" Order="2" Condition="LicenseAccepted = &quot;1&quot;" />
+				</Control>
+				<Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+					<Publish Event="SpawnDialog" Value="CancelDlg" />
+				</Control>
+			</Dialog>
+
+			<!--
+				VhdxEulaConfirmDlg — small modal spawned from VhdxEulaDlg's Install button.
+				Yes  → set LicenseAccepted=1 and close (parent's next publishes proceed).
+				No   → set LicenseAccepted=0 and close (parent's gated publishes don't fire,
+				       user stays on the EULA dialog).
+			-->
+			<Dialog Id="VhdxEulaConfirmDlg" Width="260" Height="85" Title="!(loc.WelcomeEulaDlg_Title)" NoMinimize="yes">
+				<Control Id="Text" Type="Text" X="15" Y="15" Width="230" Height="35" NoPrefix="yes"
+					Text="Do you accept the terms of the License Agreement?" />
+				<Control Id="Yes" Type="PushButton" X="80" Y="55" Width="56" Height="17" Default="yes" Text="Yes">
+					<Publish Property="LicenseAccepted" Value="1" Order="1" />
+					<Publish Event="EndDialog" Value="Return" Order="2" />
+				</Control>
+				<Control Id="No" Type="PushButton" X="146" Y="55" Width="56" Height="17" Cancel="yes" Text="No">
+					<Publish Property="LicenseAccepted" Value="0" Order="1" />
+					<Publish Event="EndDialog" Value="Return" Order="2" />
+				</Control>
+			</Dialog>
+		</UI>
+
+		<InstallUISequence>
+			<Show Dialog="VhdxEulaDlg" Before="ProgressDlg" Condition="NOT Installed" />
+		</InstallUISequence>
+	</Fragment>
+
+</Wix>

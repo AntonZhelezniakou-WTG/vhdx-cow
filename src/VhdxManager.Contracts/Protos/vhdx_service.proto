@@ -7,77 +7,76 @@ package vhdxcow;
 // Service for managing VHDX virtual disks (create, attach, mount, merge).
 // Runs as a Windows Service with admin privileges.
 // Clients connect via named pipe.
+//
+// All mutating operations are server-streaming so the client can render live
+// progress per step. Each stream emits a sequence of ProgressEvent messages
+// (one or more per step, STARTED/COMPLETED/FAILED), terminated by exactly one
+// "final" message containing the operation's final result. The client is free
+// to ignore the progress events if it just wants the final result.
 service VhdxService {
+	// ---- read-only / scalar RPCs (no progress) ----
+
+	rpc Ping (PingRequest) returns (PingReply);
+	rpc GetStatus (GetStatusRequest) returns (GetStatusReply);
+	rpc ListMounts (ListMountsRequest) returns (ListMountsReply);
+
+	// ---- streaming mutating RPCs ----
+
 	// Create a differencing (child) VHDX disk, attach it, and mount to a folder.
-	rpc CreateChild (CreateChildRequest) returns (CreateChildReply);
+	rpc CreateChild (CreateChildRequest) returns (stream CreateChildStream);
 
 	// Discard all changes in a child VHDX by recreating it from the parent.
-	rpc ResetChild (ResetChildRequest) returns (ResetChildReply);
+	rpc ResetChild (ResetChildRequest) returns (stream ResetChildStream);
 
 	// Unmount, detach, and delete a child VHDX.
-	rpc Detach (DetachRequest) returns (DetachReply);
-
-	// Query the status of a managed VHDX mount.
-	rpc GetStatus (GetStatusRequest) returns (GetStatusReply);
+	rpc Detach (DetachRequest) returns (stream DetachStream);
 
 	// Merge an overlay VHDX into its parent and recreate all children.
-	rpc Publish (PublishRequest) returns (PublishReply);
-
-	// Health check / connectivity test.
-	rpc Ping (PingRequest) returns (PingReply);
-
-	// List all active mounts managed by the service.
-	rpc ListMounts (ListMountsRequest) returns (ListMountsReply);
+	rpc Publish (PublishRequest) returns (stream PublishStream);
 
 	// Create a standalone (non-differencing) VHDX file, partition GPT, format NTFS,
 	// and optionally attach + mount it to a folder.
-	rpc CreateVhdx (CreateVhdxRequest) returns (CreateVhdxReply);
+	rpc CreateVhdx (CreateVhdxRequest) returns (stream CreateVhdxStream);
 
 	// Attach + mount an existing VHDX (parent or standalone). No file creation.
-	rpc AttachAndMount (AttachAndMountRequest) returns (AttachAndMountReply);
+	rpc AttachAndMount (AttachAndMountRequest) returns (stream AttachAndMountStream);
 
 	// Unmount + detach without deleting the VHDX file (file kept for re-use).
-	rpc UnmountAndDetach (UnmountAndDetachRequest) returns (UnmountAndDetachReply);
+	rpc UnmountAndDetach (UnmountAndDetachRequest) returns (stream UnmountAndDetachStream);
 
 	// Convert an existing folder into a VHDX-mounted folder: rename source aside,
 	// create + mount a new VHDX in its place, robocopy contents back.
-	rpc ConvertFolder (ConvertFolderRequest) returns (ConvertFolderReply);
+	rpc ConvertFolder (ConvertFolderRequest) returns (stream ConvertFolderStream);
 }
 
-message CreateChildRequest {
-	string parent_vhdx_path = 1;
-	string child_vhdx_path = 2;
-	string mount_path = 3;
+// ---------- Progress framing ----------
+
+enum ProgressPhase {
+	PROGRESS_PHASE_UNSPECIFIED = 0;
+	PROGRESS_PHASE_STARTED = 1;
+	PROGRESS_PHASE_COMPLETED = 2;
+	PROGRESS_PHASE_FAILED = 3;
 }
 
-message CreateChildReply {
-	bool success = 1;
-	string error_message = 2;
-	string volume_guid_path = 3;
+message ProgressEvent {
+	// Human-readable step name, e.g. "Creating VHDX file", "Attaching", "Formatting NTFS".
+	string step = 1;
+	ProgressPhase phase = 2;
+	// Optional extra info: path, volume guid, error message.
+	string detail = 3;
 }
 
-message ResetChildRequest {
-	string child_vhdx_path = 1;
-}
+// ---------- Read-only RPC messages ----------
 
-message ResetChildReply {
-	bool success = 1;
-	string error_message = 2;
-}
-
-message DetachRequest {
-	string child_vhdx_path = 1;
-}
-
-message DetachReply {
-	bool success = 1;
-	string error_message = 2;
+message PingRequest {}
+message PingReply {
+	string version = 1;
+	uint32 active_mounts = 2;
 }
 
 message GetStatusRequest {
 	string child_vhdx_path = 1;
 }
-
 message GetStatusReply {
 	bool is_attached = 1;
 	string mount_path = 2;
@@ -86,31 +85,10 @@ message GetStatusReply {
 	uint64 child_size_bytes = 5;
 }
 
-message PublishRequest {
-	string overlay_vhdx_path = 1;
-}
-
-message PublishReply {
-	bool success = 1;
-	string error_message = 2;
-	uint32 children_recreated = 3;
-}
-
-message PingRequest {
-}
-
-message PingReply {
-	string version = 1;
-	uint32 active_mounts = 2;
-}
-
-message ListMountsRequest {
-}
-
+message ListMountsRequest {}
 message ListMountsReply {
 	repeated MountInfo mounts = 1;
 }
-
 message MountInfo {
 	string child_vhdx_path = 1;
 	string parent_vhdx_path = 2;
@@ -120,38 +98,118 @@ message MountInfo {
 	uint64 child_size_bytes = 6;
 }
 
+// ---------- Streaming RPC messages ----------
+
+message CreateChildRequest {
+	string parent_vhdx_path = 1;
+	string child_vhdx_path = 2;
+	string mount_path = 3;
+}
+message CreateChildReply {
+	bool success = 1;
+	string error_message = 2;
+	string volume_guid_path = 3;
+}
+message CreateChildStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		CreateChildReply final = 2;
+	}
+}
+
+message ResetChildRequest {
+	string child_vhdx_path = 1;
+}
+message ResetChildReply {
+	bool success = 1;
+	string error_message = 2;
+}
+message ResetChildStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		ResetChildReply final = 2;
+	}
+}
+
+message DetachRequest {
+	string child_vhdx_path = 1;
+}
+message DetachReply {
+	bool success = 1;
+	string error_message = 2;
+}
+message DetachStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		DetachReply final = 2;
+	}
+}
+
+message PublishRequest {
+	string overlay_vhdx_path = 1;
+}
+message PublishReply {
+	bool success = 1;
+	string error_message = 2;
+	uint32 children_recreated = 3;
+}
+message PublishStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		PublishReply final = 2;
+	}
+}
+
 message CreateVhdxRequest {
 	string vhdx_path = 1;
 	int64 size_bytes = 2;
 	bool dynamic = 3;
-	string ntfs_label = 4;
+	string volume_label = 4;
 	string mount_path = 5;
+	// Filesystem to format the volume with. Empty = service-side default (ReFS).
+	// Recognized values: "ReFS", "NTFS".
+	string filesystem = 6;
 }
-
 message CreateVhdxReply {
 	bool success = 1;
 	string error_message = 2;
 	string volume_guid_path = 3;
+}
+message CreateVhdxStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		CreateVhdxReply final = 2;
+	}
 }
 
 message AttachAndMountRequest {
 	string vhdx_path = 1;
 	string mount_path = 2;
 }
-
 message AttachAndMountReply {
 	bool success = 1;
 	string error_message = 2;
 	string volume_guid_path = 3;
 }
+message AttachAndMountStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		AttachAndMountReply final = 2;
+	}
+}
 
 message UnmountAndDetachRequest {
 	string vhdx_path = 1;
 }
-
 message UnmountAndDetachReply {
 	bool success = 1;
 	string error_message = 2;
+}
+message UnmountAndDetachStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		UnmountAndDetachReply final = 2;
+	}
 }
 
 message ConvertFolderRequest {
@@ -159,14 +217,22 @@ message ConvertFolderRequest {
 	string vhdx_path = 2;
 	int64 size_bytes = 3;
 	bool dynamic = 4;
-	string ntfs_label = 5;
+	string volume_label = 5;
 	bool delete_staging = 6;
+	// Filesystem to format the new VHDX with. Empty = service-side default (ReFS).
+	// Recognized values: "ReFS", "NTFS".
+	string filesystem = 7;
 }
-
 message ConvertFolderReply {
 	bool success = 1;
 	string error_message = 2;
 	string staging_folder_path = 3;
 	int64 files_copied = 4;
 	int64 bytes_copied = 5;
+}
+message ConvertFolderStream {
+	oneof event {
+		ProgressEvent progress = 1;
+		ConvertFolderReply final = 2;
+	}
 }

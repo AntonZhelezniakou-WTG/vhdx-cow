@@ -76,12 +76,12 @@ public class VhdxGrpcServiceTests
 	[Test]
 	public async Task CreateChild_ParentPathNotAllowed_ReturnsFailure()
 	{
-		var reply = await sut.CreateChild(new CreateChildRequest
+		var reply = await InvokeCreateChild(new CreateChildRequest
 		{
 			ParentVhdxPath = @"C:\Forbidden\parent.vhdx",
 			ChildVhdxPath = $@"{AllowedChild}\child.vhdx",
 			MountPath = $@"{AllowedMount}\wt1",
-		}, callContext);
+		});
 
 		reply.Success.Should().BeFalse();
 		reply.ErrorMessage.Should().Contain("parent VHDX");
@@ -92,12 +92,12 @@ public class VhdxGrpcServiceTests
 	[Test]
 	public async Task CreateChild_ChildPathNotAllowed_ReturnsFailure()
 	{
-		var reply = await sut.CreateChild(new CreateChildRequest
+		var reply = await InvokeCreateChild(new CreateChildRequest
 		{
 			ParentVhdxPath = $@"{AllowedParent}\parent.vhdx",
 			ChildVhdxPath = @"C:\Forbidden\child.vhdx",
 			MountPath = $@"{AllowedMount}\wt1",
-		}, callContext);
+		});
 
 		reply.Success.Should().BeFalse();
 		reply.ErrorMessage.Should().Contain("child VHDX");
@@ -106,12 +106,12 @@ public class VhdxGrpcServiceTests
 	[Test]
 	public async Task CreateChild_MountPathNotAllowed_ReturnsFailure()
 	{
-		var reply = await sut.CreateChild(new CreateChildRequest
+		var reply = await InvokeCreateChild(new CreateChildRequest
 		{
 			ParentVhdxPath = $@"{AllowedParent}\parent.vhdx",
 			ChildVhdxPath = $@"{AllowedChild}\child.vhdx",
 			MountPath = @"C:\Forbidden\wt1",
-		}, callContext);
+		});
 
 		reply.Success.Should().BeFalse();
 		reply.ErrorMessage.Should().Contain("mount");
@@ -121,12 +121,12 @@ public class VhdxGrpcServiceTests
 	public async Task CreateChild_ParentFileNotFound_ReturnsFailure()
 	{
 		// Paths are valid but the parent .vhdx file doesn't exist on disk
-		var reply = await sut.CreateChild(new CreateChildRequest
+		var reply = await InvokeCreateChild(new CreateChildRequest
 		{
 			ParentVhdxPath = $@"{AllowedParent}\does-not-exist.vhdx",
 			ChildVhdxPath = $@"{AllowedChild}\child.vhdx",
 			MountPath = $@"{AllowedMount}\wt1",
-		}, callContext);
+		});
 
 		reply.Success.Should().BeFalse();
 		reply.ErrorMessage.Should().Contain("not found");
@@ -159,12 +159,12 @@ public class VhdxGrpcServiceTests
 				.CreateDifferencingDiskAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
 				.Returns(Task.FromException(new InvalidOperationException("disk creation failed")));
 
-			var reply = await service.CreateChild(new CreateChildRequest
+			var reply = await InvokeCreateChild(new CreateChildRequest
 			{
 				ParentVhdxPath = parentFile,
 				ChildVhdxPath = Path.Combine(Path.GetTempPath(), "child.vhdx"),
 				MountPath = Path.Combine(Path.GetTempPath(), "mount"),
-			}, callContext);
+			}, service);
 
 			reply.Success.Should().BeFalse();
 			reply.ErrorMessage.Should().Contain("disk creation failed");
@@ -183,8 +183,8 @@ public class VhdxGrpcServiceTests
 		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns((MountedDiskState?)null);
 
-		var reply = await sut.ResetChild(
-			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+		var reply = await InvokeResetChild(
+			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" });
 
 		reply.Success.Should().BeFalse();
 		reply.ErrorMessage.Should().Contain("No tracked mount");
@@ -200,8 +200,8 @@ public class VhdxGrpcServiceTests
 			.UnmountFolderAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromException(new InvalidOperationException("unmount failed")));
 
-		var reply = await sut.ResetChild(
-			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+		var reply = await InvokeResetChild(
+			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" });
 
 		reply.Success.Should().BeFalse();
 		reply.ErrorMessage.Should().Contain("unmount failed");
@@ -217,8 +217,8 @@ public class VhdxGrpcServiceTests
 		volumeManager.GetVolumeGuidPathAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns(@"\\?\Volume{new-guid}\");
 
-		var reply = await sut.ResetChild(
-			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+		var reply = await InvokeResetChild(
+			new ResetChildRequest { ChildVhdxPath = @"C:\child.vhdx" });
 
 		reply.Success.Should().BeTrue();
 		await stateStore.Received(1).AddAsync(
@@ -237,8 +237,8 @@ public class VhdxGrpcServiceTests
 		virtDiskManager.DetachAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromException(new InvalidOperationException("detach failed")));
 
-		var reply = await sut.Detach(
-			new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+		var reply = await InvokeDetach(
+			new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" });
 
 		reply.Success.Should().BeFalse();
 		reply.ErrorMessage.Should().Contain("detach failed");
@@ -250,8 +250,8 @@ public class VhdxGrpcServiceTests
 		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns(SomeState(@"C:\child.vhdx"));
 
-		var reply = await sut.Detach(
-			new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+		var reply = await InvokeDetach(
+			new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" });
 
 		reply.Success.Should().BeTrue();
 		await volumeManager.Received(1).UnmountFolderAsync(
@@ -268,7 +268,7 @@ public class VhdxGrpcServiceTests
 		stateStore.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
 			.Returns((MountedDiskState?)null);
 
-		await sut.Detach(new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" }, callContext);
+		await InvokeDetach(new DetachRequest { ChildVhdxPath = @"C:\child.vhdx" });
 
 		await volumeManager.DidNotReceive().UnmountFolderAsync(
 			Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -365,4 +365,39 @@ public class VhdxGrpcServiceTests
 		MountPath = @"C:\mount\wt1",
 		VolumeGuidPath = @"\\?\Volume{abcd}\",
 	};
+
+	// Streaming-handler test wrappers: drive the new `Task X(req, IServerStreamWriter<XStream>, ctx)`
+	// signature against an in-memory recorder, then extract the single final-reply message.
+
+	async Task<CreateChildReply> InvokeCreateChild(CreateChildRequest req, VhdxGrpcService? service = null)
+	{
+		var writer = new RecordingStreamWriter<CreateChildStream>();
+		await (service ?? sut).CreateChild(req, writer, callContext);
+		return writer.Messages.Single(m => m.EventCase == CreateChildStream.EventOneofCase.Final).Final;
+	}
+
+	async Task<ResetChildReply> InvokeResetChild(ResetChildRequest req)
+	{
+		var writer = new RecordingStreamWriter<ResetChildStream>();
+		await sut.ResetChild(req, writer, callContext);
+		return writer.Messages.Single(m => m.EventCase == ResetChildStream.EventOneofCase.Final).Final;
+	}
+
+	async Task<DetachReply> InvokeDetach(DetachRequest req)
+	{
+		var writer = new RecordingStreamWriter<DetachStream>();
+		await sut.Detach(req, writer, callContext);
+		return writer.Messages.Single(m => m.EventCase == DetachStream.EventOneofCase.Final).Final;
+	}
+
+	sealed class RecordingStreamWriter<T> : IServerStreamWriter<T>
+	{
+		public List<T> Messages { get; } = [];
+		public WriteOptions? WriteOptions { get; set; }
+		public Task WriteAsync(T message)
+		{
+			Messages.Add(message);
+			return Task.CompletedTask;
+		}
+	}
 }

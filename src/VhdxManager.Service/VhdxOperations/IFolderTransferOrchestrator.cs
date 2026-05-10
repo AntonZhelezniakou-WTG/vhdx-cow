@@ -13,7 +13,8 @@ public interface IFolderTransferOrchestrator
 		string vhdxPath,
 		long sizeBytes,
 		bool dynamic,
-		string ntfsLabel,
+		string label,
+		string filesystem,
 		bool deleteStaging,
 		CancellationToken ct = default);
 }

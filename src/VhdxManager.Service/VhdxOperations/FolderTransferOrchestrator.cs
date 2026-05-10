@@ -15,7 +15,8 @@ public sealed class FolderTransferOrchestrator(
 		string vhdxPath,
 		long sizeBytes,
 		bool dynamic,
-		string ntfsLabel,
+		string label,
+		string filesystem,
 		bool deleteStaging,
 		CancellationToken ct)
 	{
@@ -58,7 +59,7 @@ public sealed class FolderTransferOrchestrator(
 			stage = ConvertStage.VhdxAttached;
 			ct.ThrowIfCancellationRequested();
 
-			await diskInitializer.InitializeAndFormatAsync(physicalPath, ntfsLabel, ct);
+			await diskInitializer.InitializeAndFormatAsync(physicalPath, label, filesystem, ct);
 			stage = ConvertStage.DiskInitialized;
 			ct.ThrowIfCancellationRequested();
 

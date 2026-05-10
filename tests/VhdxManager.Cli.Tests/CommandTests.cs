@@ -107,7 +107,7 @@ public class CommandTests
 	[Test]
 	public async Task Init_Success_ExitCode0()
 	{
-		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new CreateChildReply { Success = true, VolumeGuidPath = @"\\?\Volume{abcd}\" });
 
 		var (exitCode, stdout, _) = await InvokeWithOutput(@"init --parent C:\p.vhdx --child C:\c.vhdx --mount C:\m");
@@ -119,7 +119,7 @@ public class CommandTests
 	[Test]
 	public async Task Init_ServerFailure_ExitCode1()
 	{
-		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+		mockClient.CreateChildAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new CreateChildReply { Success = false, ErrorMessage = "path invalid" });
 
 		var (exitCode, _, stderr) = await InvokeWithOutput(@"init --parent C:\p.vhdx --child C:\c.vhdx --mount C:\m");
@@ -133,7 +133,7 @@ public class CommandTests
 	[Test]
 	public async Task Reset_Success_ExitCode0()
 	{
-		mockClient.ResetChildAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+		mockClient.ResetChildAsync(Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new ResetChildReply { Success = true });
 
 		var exitCode = await Invoke(@"reset --child C:\c.vhdx");
@@ -144,7 +144,7 @@ public class CommandTests
 	[Test]
 	public async Task Reset_ServerFailure_ExitCode1()
 	{
-		mockClient.ResetChildAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+		mockClient.ResetChildAsync(Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new ResetChildReply { Success = false, ErrorMessage = "not tracked" });
 
 		var (exitCode, _, stderr) = await InvokeWithOutput(@"reset --child C:\c.vhdx");
@@ -158,7 +158,7 @@ public class CommandTests
 	[Test]
 	public async Task Cleanup_Success_ExitCode0()
 	{
-		mockClient.DetachAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+		mockClient.DetachAsync(Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new DetachReply { Success = true });
 
 		var exitCode = await Invoke(@"cleanup --child C:\c.vhdx");
@@ -195,7 +195,7 @@ public class CommandTests
 	[Test]
 	public async Task Publish_Success_ShowsCount()
 	{
-		mockClient.PublishAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+		mockClient.PublishAsync(Arg.Any<string>(), Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
 			.Returns(new PublishReply { Success = true, ChildrenRecreated = 3 });
 
 		var (exitCode, stdout, _) = await InvokeWithOutput(@"publish --overlay C:\overlay.vhdx");

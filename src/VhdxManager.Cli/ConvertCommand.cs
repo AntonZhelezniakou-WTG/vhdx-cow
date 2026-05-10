@@ -19,11 +19,15 @@ internal static class ConvertCommand
 		var folderOption = new Option<string?>("--folder") { Description = "Folder to convert" };
 		var vhdxOption = new Option<string?>("--vhdx") { Description = "Path of the VHDX file to create" };
 		var sizeOption = new Option<string?>("--size") { Description = "VHDX size, e.g. 50G, 500M, 1T" };
-		var labelOption = new Option<string?>("--label") { Description = "NTFS volume label (default: data)" };
+		var labelOption = new Option<string?>("--label") { Description = "Volume label (default: data)" };
 		var dynamicOption = new Option<bool?>("--dynamic") { Description = "Dynamic VHDX (default: true)" };
 		var fixedOption = new Option<bool?>("--fixed") { Description = "Fixed (preallocated) VHDX" };
 		var keepStagingOption = new Option<bool>("--keep-staging") { Description = "Keep the renamed source folder after copy" };
 		var yesOption = new Option<bool>("--yes") { Description = "Skip the confirmation prompt" };
+		var filesystemOption = new Option<string?>("--filesystem")
+		{
+			Description = "Filesystem to format with: ReFS (default) or NTFS",
+		};
 
 		var command = new Command(
 			"convert",
@@ -32,7 +36,7 @@ internal static class ConvertCommand
 			Options =
 			{
 				folderOption, vhdxOption, sizeOption, labelOption,
-				dynamicOption, fixedOption, keepStagingOption, yesOption,
+				dynamicOption, fixedOption, keepStagingOption, yesOption, filesystemOption,
 			},
 		};
 
@@ -50,6 +54,7 @@ internal static class ConvertCommand
 			var fix = parseResult.GetValue(fixedOption);
 			var keepStaging = parseResult.GetValue(keepStagingOption);
 			var yes = parseResult.GetValue(yesOption);
+			var filesystem = parseResult.GetValue(filesystemOption);
 
 			try
 			{
@@ -67,7 +72,7 @@ internal static class ConvertCommand
 					return 1;
 				}
 
-				label ??= InteractivePrompt.AskString("NTFS volume label", defaultValue: "data");
+				label ??= InteractivePrompt.AskString("Volume label", defaultValue: "data");
 
 				bool dynamic;
 				if (dyn == true && fix == true)
@@ -79,13 +84,22 @@ internal static class ConvertCommand
 				else if (fix == true) dynamic = false;
 				else dynamic = InteractivePrompt.AskDynamicVsFixed("Disk type");
 
+				// Filesystem: default ReFS, no interactive prompt (user must opt-in to NTFS via --filesystem).
+				var fs = CreateCommand.NormalizeFilesystem(filesystem);
+				if (fs is null)
+				{
+					AnsiConsole.MarkupLine($"[red]Invalid --filesystem '{filesystem}'.[/] Use 'ReFS' or 'NTFS'.");
+					return 1;
+				}
+
 				if (!yes)
 				{
 					AnsiConsole.MarkupLine("");
-					AnsiConsole.MarkupLine($"[bold]Folder:[/]      {folder}");
-					AnsiConsole.MarkupLine($"[bold]VHDX:[/]        {vhdx}");
-					AnsiConsole.MarkupLine($"[bold]Size:[/]        {InteractivePrompt.FormatSize(sizeBytes)} ({(dynamic ? "dynamic" : "fixed")})");
-					AnsiConsole.MarkupLine($"[bold]Label:[/]       {label}");
+					AnsiConsole.MarkupLine($"[bold]Folder:[/]       {folder}");
+					AnsiConsole.MarkupLine($"[bold]VHDX:[/]         {vhdx}");
+					AnsiConsole.MarkupLine($"[bold]Size:[/]         {InteractivePrompt.FormatSize(sizeBytes)} ({(dynamic ? "dynamic" : "fixed")})");
+					AnsiConsole.MarkupLine($"[bold]Filesystem:[/]   {fs}");
+					AnsiConsole.MarkupLine($"[bold]Label:[/]        {label}");
 					AnsiConsole.MarkupLine($"[bold]Keep staging:[/] {keepStaging}");
 					AnsiConsole.MarkupLine("");
 					AnsiConsole.MarkupLine("[yellow]The folder will be renamed aside, a new VHDX created in its place, and contents copied back.[/]");
@@ -98,34 +112,28 @@ internal static class ConvertCommand
 
 				using var client = clientFactory(pipeName, timeout);
 
-				ConvertFolderReplyLike result = default!;
-				await AnsiConsole.Status()
-					.StartAsync("Converting folder…", async ctx =>
-					{
-						ctx.Status("Renaming source, creating VHDX, formatting NTFS, mounting…");
-						var resp = await client.ConvertFolderAsync(
-							folder, vhdx, sizeBytes, dynamic, label!,
-							deleteStaging: !keepStaging,
-							ct);
-						result = new ConvertFolderReplyLike(
-							resp.Success, resp.ErrorMessage, resp.StagingFolderPath,
-							resp.FilesCopied, resp.BytesCopied);
-					});
+				AnsiConsole.MarkupLine($"[bold]vhmgr convert[/]");
+				using var progress = new ProgressRenderer();
+				var resp = await client.ConvertFolderAsync(
+					folder, vhdx, sizeBytes, dynamic, label!, fs,
+					deleteStaging: !keepStaging,
+					progress.Handle, ct);
 
-				if (result.Success)
+				if (resp.Success)
 				{
-					AnsiConsole.MarkupLine($"[green]✓[/] Convert complete. {result.FilesCopied:N0} files, {InteractivePrompt.FormatSize(result.BytesCopied)} copied.");
-					if (keepStaging || !string.IsNullOrEmpty(result.StagingFolderPath))
+					AnsiConsole.MarkupLine(
+						$"  [grey]Copied:[/] {resp.FilesCopied:N0} files, {InteractivePrompt.FormatSize(resp.BytesCopied)}");
+					if (keepStaging && !string.IsNullOrEmpty(resp.StagingFolderPath))
 					{
-						AnsiConsole.MarkupLine($"  Staging: [yellow]{result.StagingFolderPath}[/]");
+						AnsiConsole.MarkupLine($"  [grey]Staging:[/] [yellow]{resp.StagingFolderPath}[/]");
 					}
 					return 0;
 				}
 
-				AnsiConsole.MarkupLine($"[red]Convert failed:[/] {result.ErrorMessage}");
-				if (!string.IsNullOrEmpty(result.StagingFolderPath))
+				AnsiConsole.MarkupLine($"[red]Convert failed:[/] {resp.ErrorMessage}");
+				if (!string.IsNullOrEmpty(resp.StagingFolderPath))
 				{
-					AnsiConsole.MarkupLine($"Staging folder (original data): [yellow]{result.StagingFolderPath}[/]");
+					AnsiConsole.MarkupLine($"Staging folder (original data): [yellow]{resp.StagingFolderPath}[/]");
 				}
 				return 1;
 			}

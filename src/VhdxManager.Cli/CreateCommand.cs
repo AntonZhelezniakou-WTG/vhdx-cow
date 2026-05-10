@@ -17,14 +17,21 @@ internal static class CreateCommand
 	{
 		var pathOption = new Option<string?>("--path") { Description = "Path of the new VHDX file" };
 		var sizeOption = new Option<string?>("--size") { Description = "Size, e.g. 50G, 500M, 1T" };
-		var labelOption = new Option<string?>("--label") { Description = "NTFS volume label (default: data)" };
+		var labelOption = new Option<string?>("--label") { Description = "Volume label (default: data)" };
 		var mountOption = new Option<string?>("--mount") { Description = "Folder to mount the new disk (optional)" };
 		var dynamicOption = new Option<bool?>("--dynamic") { Description = "Create a dynamic VHDX (default: true)" };
 		var fixedOption = new Option<bool?>("--fixed") { Description = "Create a fixed (preallocated) VHDX" };
-
-		var command = new Command("create", "Create a new standalone VHDX, partition + format NTFS, optionally mount.")
+		// --filesystem: defaults to ReFS, but stays nullable so the user "didn't say"
+		// case maps to the empty wire value (server-side default = ReFS) without
+		// extra prompting.
+		var filesystemOption = new Option<string?>("--filesystem")
 		{
-			Options = { pathOption, sizeOption, labelOption, mountOption, dynamicOption, fixedOption },
+			Description = "Filesystem to format with: ReFS (default) or NTFS",
+		};
+
+		var command = new Command("create", "Create a new standalone VHDX, partition + format, optionally mount.")
+		{
+			Options = { pathOption, sizeOption, labelOption, mountOption, dynamicOption, fixedOption, filesystemOption },
 		};
 
 		command.SetAction(async (parseResult, ct) =>
@@ -39,6 +46,7 @@ internal static class CreateCommand
 			var mount = parseResult.GetValue(mountOption);
 			var dyn = parseResult.GetValue(dynamicOption);
 			var fix = parseResult.GetValue(fixedOption);
+			var filesystem = parseResult.GetValue(filesystemOption);
 
 			try
 			{
@@ -55,7 +63,7 @@ internal static class CreateCommand
 					return 1;
 				}
 
-				label ??= InteractivePrompt.AskString("NTFS volume label", defaultValue: "data");
+				label ??= InteractivePrompt.AskString("Volume label", defaultValue: "data");
 
 				bool dynamic;
 				if (dyn == true && fix == true)
@@ -73,18 +81,32 @@ internal static class CreateCommand
 
 				mount ??= InteractivePrompt.AskOptionalString("Mount to folder (leave blank to skip)");
 
+				// Filesystem: per the project rule, default is ReFS without prompting.
+				// Validate any user-supplied value early so we fail fast rather than
+				// after going through the create+attach+partition pipeline.
+				var fs = NormalizeFilesystem(filesystem);
+				if (fs is null)
+				{
+					AnsiConsole.MarkupLine($"[red]Invalid --filesystem '{filesystem}'.[/] Use 'ReFS' or 'NTFS'.");
+					return 1;
+				}
+
 				using var client = clientFactory(pipeName, timeout);
-				var resp = await AnsiConsole.Status()
-					.StartAsync(
-						$"Creating VHDX ({InteractivePrompt.FormatSize(sizeBytes)}, {(dynamic ? "dynamic" : "fixed")})…",
-						async _ => await client.CreateVhdxAsync(path, sizeBytes, dynamic, label, mount, ct));
+
+				AnsiConsole.MarkupLine(
+					$"[bold]vhmgr create[/] [grey]({InteractivePrompt.FormatSize(sizeBytes)}, {(dynamic ? "dynamic" : "fixed")}, fs={fs}, label={label})[/]");
+
+				// Per-step progress is rendered live by ProgressRenderer; the streaming
+				// RPC emits STARTED/COMPLETED/FAILED events for every internal step.
+				using var progress = new ProgressRenderer();
+				var resp = await client.CreateVhdxAsync(
+					path, sizeBytes, dynamic, label, mount, fs, progress.Handle, ct);
 
 				if (resp.Success)
 				{
-					AnsiConsole.MarkupLine($"[green]✓[/] VHDX created at [yellow]{path}[/]");
 					if (!string.IsNullOrEmpty(resp.VolumeGuidPath))
 					{
-						AnsiConsole.MarkupLine($"[green]✓[/] Mounted to [yellow]{mount}[/] (volume {resp.VolumeGuidPath})");
+						AnsiConsole.MarkupLine($"  [grey]Volume:[/] {resp.VolumeGuidPath}");
 					}
 					return 0;
 				}
@@ -110,5 +132,25 @@ internal static class CreateCommand
 		});
 
 		return command;
+	}
+
+	/// <summary>
+	/// Resolves the user-supplied --filesystem value to the canonical name
+	/// expected by the service ("ReFS" or "NTFS"). null/empty input → "ReFS"
+	/// (project default — never asked interactively). Returns null for any
+	/// other value so the caller can render a clear error.
+	/// </summary>
+	internal static string? NormalizeFilesystem(string? raw)
+	{
+		if (string.IsNullOrWhiteSpace(raw))
+		{
+			return "ReFS";
+		}
+		return raw.Trim().ToUpperInvariant() switch
+		{
+			"REFS" => "ReFS",
+			"NTFS" => "NTFS",
+			_ => null,
+		};
 	}
 }

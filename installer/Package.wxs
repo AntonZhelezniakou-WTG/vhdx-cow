@@ -62,7 +62,11 @@
 			"File: [1], Directory: [9], Size: [6]" placeholders instead of formatted
 			values during file copy.
 		-->
-		<ui:WixUI Id="WixUI_Minimal" />
+		<!-- WixUI_VhdxManager is our copy of WixUI_Minimal that uses a patched
+		     WelcomeEulaDlg with Sunken="yes" on the LicenseAcceptedCheckBox
+		     (see installer/CustomDialogs.wxs). _X64 is the per-arch variant
+		     that wires the Print button to WixUIPrintEula_X64. -->
+		<UIRef Id="WixUI_VhdxManager_X64" />
 		<UIRef Id="WixUI_ErrorProgressText" />
 		<WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)license.rtf" />
 		<Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
