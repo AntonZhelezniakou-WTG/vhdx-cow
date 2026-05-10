@@ -43,18 +43,6 @@ internal static class InteractivePrompt
 		return AnsiConsole.Confirm(label, defaultValue);
 	}
 
-	public static bool AskDynamicVsFixed(string label, bool defaultDynamic = true)
-	{
-		EnsureInteractive(label);
-		var choice = AnsiConsole.Prompt(
-			new SelectionPrompt<string>()
-				.Title(label)
-				.AddChoices(defaultDynamic
-					? ["dynamic", "fixed"]
-					: ["fixed", "dynamic"]));
-		return choice == "dynamic";
-	}
-
 	public static long AskSize(string label, long? defaultValue = null)
 	{
 		EnsureInteractive(label);

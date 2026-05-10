@@ -82,7 +82,7 @@ internal static class ConvertCommand
 				}
 				else if (dyn == true) dynamic = true;
 				else if (fix == true) dynamic = false;
-				else dynamic = InteractivePrompt.AskDynamicVsFixed("Disk type");
+				else dynamic = true; // default: dynamic, no prompt
 
 				// Filesystem: default ReFS, no interactive prompt (user must opt-in to NTFS via --filesystem).
 				var fs = CreateCommand.NormalizeFilesystem(filesystem);

@@ -77,7 +77,7 @@ internal static class CreateCommand
 				else if (fix == true)
 					dynamic = false;
 				else
-					dynamic = InteractivePrompt.AskDynamicVsFixed("Disk type");
+					dynamic = true; // default: dynamic, no prompt
 
 				mount ??= InteractivePrompt.AskOptionalString("Mount to folder (leave blank to skip)");
 
