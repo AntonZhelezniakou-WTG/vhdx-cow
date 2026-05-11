@@ -268,6 +268,28 @@ dotnet build installer/VhdxManager.Installer.wixproj -c Release `
     /p:DevCertPassword=$env:CODESIGN_PASSWORD
 ```
 
+### Releases (GitHub Actions)
+
+The [`.github/workflows/release.yml`](.github/workflows/release.yml) workflow builds, signs, and publishes a GitHub Release containing the signed MSI.
+
+**To cut a release**: push a tag like `v1.0.0`. The workflow takes the version from the tag, builds + tests + publishes Service and CLI, builds the MSI, signs it if the signing secrets are present, and creates a GitHub Release with the MSI attached.
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The release notes are auto-generated from PRs/commits since the previous tag.
+
+**To dry-run** without publishing: trigger the workflow manually from the Actions tab with a version input. The result is a *draft* release at the same tag; review the MSI, then click **Publish release** when ready.
+
+**Signing secrets** (optional — without them the MSI is built unsigned and Windows shows "Unknown publisher" on the UAC prompt):
+
+| Secret | Contents |
+|---|---|
+| `CODESIGN_PFX_BASE64` | base64-encoded `.pfx` file (`[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))`) |
+| `CODESIGN_PFX_PASSWORD` | password for the `.pfx` |
+
 ### Running tests
 
 ```powershell
