@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+	<RunConfiguration>
+		<!--
+			Hard cap to one worker. Every test in this project drives the same
+			Hyper-V VM through a single PSSession; running them in parallel
+			would have two fixtures fight over Restore-VMSnapshot.
+		-->
+		<MaxCpuCount>1</MaxCpuCount>
+		<DisableParallelization>true</DisableParallelization>
+	</RunConfiguration>
+	<NUnit>
+		<NumberOfTestWorkers>1</NumberOfTestWorkers>
+	</NUnit>
+</RunSettings>

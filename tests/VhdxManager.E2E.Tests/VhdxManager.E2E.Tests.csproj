@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<!--
+			Test methods use underscored names by convention (Foo_Does_Bar);
+			CA1707 fights that. Other test projects in the repo silently
+			don't trip it because they have shorter names; we keep the same
+			scheme and just suppress the analyzer here.
+		-->
+		<NoWarn>$(NoWarn);CA1707</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" />
+		<PackageReference Include="NUnit" />
+		<PackageReference Include="NUnit3TestAdapter" />
+		<PackageReference Include="FluentAssertions" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--
+			.runsettings is consumed by `dotnet test`; copying it next to the
+			binaries lets `dotnet test path\to\bin\...dll` pick it up too.
+		-->
+		<None Include=".runsettings" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+</Project>
