@@ -45,6 +45,8 @@ checks (no VM needed) — useful when iterating on the harness itself.
 | `InstalledCleanCheckpointFixture` (Order -1) | `pre-install-clean` → install → `installed-clean@<sha8>` | ~3 min | no-op |
 | `Installer_Tests` (Order 1) | `pre-install-clean` | ~2 min | ~2 min |
 | `Uninstall_Tests` (Order 2) | `installed-clean@<sha8>` | ~1.5 min | ~1.5 min |
+| `Reinstall_Tests` (Order 3) | `installed-clean@<sha8>` — runs `/i` over top | ~1.5 min | ~1.5 min |
+| `Repair_Tests` (Order 4) | `installed-clean@<sha8>` — deletes `vhmgr.exe`, runs `/fp` | ~2 min | ~2 min |
 
 The installer test asserts these files/dirs exist post-install (mirrors the
 WiX component layout — keep in sync when the installer changes):
@@ -66,6 +68,7 @@ WiX component layout — keep in sync when the installer changes):
 | `Convert_Tests` (Order 40) | `convert`, `list` | `installed-clean@<sha8>` | ~2 min |
 | `Logs_Tests` (Order 50) | `logs --since install`, `logs --output`, `logs --since 1h` | `installed-clean@<sha8>` | ~1 min |
 | `DefenderExclusion_Tests` (Order 60) | `create --add-defender-exclusion true`, `Get-MpPreference` assertion | `installed-clean@<sha8>` | ~1 min |
+| `Publish_Tests` (Order 70) | `create` (parent), `init` ×2 (child + overlay), `publish`, marker propagation | `installed-clean@<sha8>` | ~3 min |
 
 Each scenario fixture boots the VM once (~30 s) and runs its verb sequence
 in `[Order(N)]` — sharing one boot across related steps. Per-verb-per-fixture
@@ -129,21 +132,15 @@ Documented here so the gap is visible at code-review time:
 
 ### Phase A — installer
 
-* **Idempotent reinstall** — install over install. Need to confirm WiX
-  behavior (uninstall-then-install vs upgrade vs error).
-* **MSI repair** — `msiexec /fp`.
-* **PATH cleanup after uninstall** — depends on reboot semantics for the
-  machine PATH; needs a reboot-and-recheck step.
 * **ProgramData purge policy** — `logs/` and `appsettings.json` lifecycle
-  on uninstall is not yet codified.
+  on uninstall is not yet codified; WiX default leaves user data in place.
 
 ### Phase B — CLI
 
-* **`publish`** — merging an overlay VHDX into its parent and recreating
-  every registered child is a 2+-VHDX workflow that needs its own fixture
-  (create parent, init child, write to child, take overlay, publish,
-  assert children regenerated). Deferred until the overlay/parent
-  semantics are pinned down with the team.
+* **`publish` — multi-parent trees** — `Publish_Tests` covers the
+  single-parent / two-child case. A tree with multiple parent generations
+  (parent → child-A → grandchild-B) is not exercised; the merge semantics
+  for deeper chains are untested.
 * **Defender exclusion removal on delete** — the CLI (and service) have no
   `RemoveExclusionAsync` path; deleting a VHDX does not remove the Defender
   exclusion entry. A follow-up should add `Remove-MpPreference` to

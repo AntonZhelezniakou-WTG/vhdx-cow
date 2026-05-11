@@ -324,12 +324,28 @@ public sealed class VhdxGrpcService(
 		{
 			var sw = Stopwatch.StartNew();
 
-			var allMounts = await stateStore.GetAllAsync(ct);
+			// Snapshot to a List<T> so the "Recreating" loop below can call
+			// stateStore.AddAsync without triggering a concurrent-modification
+			// exception on the ReadOnlyCollection wrapper returned by GetAllAsync.
+			var allMounts = (await stateStore.GetAllAsync(ct)).ToList();
 
-			await reporter.StepAsync($"Detaching {allMounts.Count} child mount(s)",
+			// Separate the overlay from the other registered children. The overlay
+			// must stay attached until MergeAsync (Step 3) because the Win32 merge
+			// API needs its file to be detachable; deleting the file in Step 1 would
+			// cause Step 2 (Detaching overlay) to fail with ERROR_FILE_NOT_FOUND.
+			var otherMounts = allMounts
+				.Where(m => !string.Equals(m.ChildVhdxPath, request.OverlayVhdxPath,
+				                           StringComparison.OrdinalIgnoreCase))
+				.ToList();
+
+			var overlayMount = allMounts.FirstOrDefault(m =>
+				string.Equals(m.ChildVhdxPath, request.OverlayVhdxPath,
+				              StringComparison.OrdinalIgnoreCase));
+
+			await reporter.StepAsync($"Detaching {otherMounts.Count} child mount(s)",
 				async () =>
 				{
-					foreach (var mount in allMounts)
+					foreach (var mount in otherMounts)
 					{
 						await volumeManager.UnmountFolderAsync(mount.MountPath, ct);
 						await virtDiskManager.DetachAsync(mount.ChildVhdxPath, ct);
@@ -338,7 +354,14 @@ public sealed class VhdxGrpcService(
 				}, ct: ct);
 
 			await reporter.StepAsync("Detaching overlay",
-				() => virtDiskManager.DetachAsync(request.OverlayVhdxPath, ct),
+				async () =>
+				{
+					// If the overlay is a registered child, release its folder mount
+					// before DetachVirtualDisk to avoid an orphaned mount point.
+					if (overlayMount is not null)
+						await volumeManager.UnmountFolderAsync(overlayMount.MountPath, ct);
+					await virtDiskManager.DetachAsync(request.OverlayVhdxPath, ct);
+				},
 				request.OverlayVhdxPath, ct);
 
 			await reporter.StepAsync("Merging overlay into parent",

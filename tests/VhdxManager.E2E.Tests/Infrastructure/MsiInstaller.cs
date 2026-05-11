@@ -27,6 +27,16 @@ public static class MsiInstaller
 		string guestMsiPath, CancellationToken ct = default)
 		=> RunMsiExecAsync(s, $"/x \"{guestMsiPath}\"", "uninstall", ct);
 
+	/// <summary>
+	/// Repair the installation: restore any missing files (<c>/fp</c> mode).
+	/// Stops the service, reinstalls files that are absent, then restarts the
+	/// service. Use after intentionally deleting a managed file to verify that
+	/// repair brings the installation back to a healthy state.
+	/// </summary>
+	public static Task<MsiResult> RepairSilentAsync(GuestSession s,
+		string guestMsiPath, CancellationToken ct = default)
+		=> RunMsiExecAsync(s, $"/fp \"{guestMsiPath}\"", "repair", ct);
+
 	private static async Task<MsiResult> RunMsiExecAsync(GuestSession s,
 		string operation, string verb, CancellationToken ct)
 	{

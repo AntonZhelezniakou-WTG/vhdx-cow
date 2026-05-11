@@ -51,4 +51,31 @@ public sealed class Uninstall_Tests : InstalledFixtureBase
 			"the entire Program Files\\VhdxManager tree should be removed by uninstall " +
 			"(Service\\ and Cli\\ are the only contents, both owned by the MSI)");
 	}
+
+	[Test]
+	public async Task Path_Entry_Removed_After_Uninstall()
+	{
+		if (!_uninstallResult.Succeeded) Assert.Inconclusive("MSI uninstall failed.");
+
+		// The WiX CliPathComponent sets Permanent="no" on the PATH Environment
+		// element, which tells Windows Installer to remove the entry on uninstall.
+		// A fresh PSSession reads machine PATH from the registry, so this check
+		// does not require a reboot — the updated registry value is visible
+		// immediately in any newly-spawned process.
+		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhmgr.exe");
+		onPath.Should().BeFalse(
+			"uninstall must remove the CLI directory from the machine PATH " +
+			"(WiX CliPathComponent Environment/@Permanent='no')");
+
+		// Belt-and-braces: confirm the registry PATH value itself no longer
+		// contains the VhdxManager\\Cli directory, independently of whether
+		// Get-Command resolves the (now-deleted) binary.
+		var pathContainsCli = await Guest.InvokeJsonAsync<bool>(@"
+$mp = [System.Environment]::GetEnvironmentVariable('PATH', 'Machine')
+$null -ne $mp -and $mp -like '*VhdxManager\Cli*'
+");
+		pathContainsCli.Should().BeFalse(
+			@"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment\Path " +
+			"must not contain 'VhdxManager\\Cli' after uninstall");
+	}
 }
