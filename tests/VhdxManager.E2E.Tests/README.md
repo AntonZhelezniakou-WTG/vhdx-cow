@@ -38,6 +38,8 @@ checks (no VM needed) — useful when iterating on the harness itself.
 
 ## Test order and runtime
 
+### Phase A — installer
+
 | Fixture | Checkpoint | First-run cost | Subsequent runs |
 |---|---|---|---|
 | `InstalledCleanCheckpointFixture` (Order -1) | `pre-install-clean` → install → `installed-clean@<sha8>` | ~3 min | no-op |
@@ -54,6 +56,37 @@ WiX component layout — keep in sync when the installer changes):
 | `C:\Program Files\VhdxManager\Cli\vhmgr.exe` | CLI on PATH |
 | `C:\ProgramData\VhdxManager\logs` | Service log directory |
 
+### Phase B — CLI verbs (scenario fixtures)
+
+| Fixture | Verbs exercised | Checkpoint | Typical cost |
+|---|---|---|---|
+| `BasicVerbs_Tests` (Order 10) | `ping`, `list` (empty), `--help`, `--version` | `installed-clean@<sha8>` | ~1 min |
+| `StandaloneVhdx_Tests` (Order 20) | `create`, `list`, `unmount`, `mount`, `delete` | `installed-clean@<sha8>` | ~2 min |
+| `Differencing_Tests` (Order 30) | `create` (parent), `init`, `status`, `reset`, `cleanup` | `installed-clean@<sha8>` | ~3 min |
+| `Convert_Tests` (Order 40) | `convert`, `list` | `installed-clean@<sha8>` | ~2 min |
+| `Logs_Tests` (Order 50) | `logs --since install`, `logs --output`, `logs --since 1h` | `installed-clean@<sha8>` | ~1 min |
+
+Each scenario fixture boots the VM once (~30 s) and runs its verb sequence
+in `[Order(N)]` — sharing one boot across related steps. Per-verb-per-fixture
+would have cost ~7-14 min total just on boots; the scenario shape brings
+end-to-end Phase B to ~9-10 min.
+
+CLI invocations always pass:
+* `--mount ""` (empty string, not absent) when no mount is wanted —
+  omitting `--mount` falls through to `InteractivePrompt.AskOptionalString`
+  and the CLI hangs forever on a redirected stdin.
+* `--add-defender-exclusion false` on every state-mutating verb — without
+  it, `DefenderExclusionResolver` falls through to an interactive Spectre
+  prompt and dies with "Cannot show selection prompt since the current
+  terminal does not support ANSI escape sequences".
+* `--filesystem NTFS` on `create` for small (≤256 MB) volumes — the CLI
+  defaults to ReFS, which refuses tiny formats with "Format-Volume: Size
+  Not Supported". `convert` doesn't expose `--filesystem` and always uses
+  ReFS, so its tests run at 4 GB (smallest size ReFS reliably formats —
+  256 MB fails with "Size Not Supported", 1 GB with return code 40000).
+  The VHDX is dynamic by default, so the on-disk footprint is only a few
+  MB regardless of the logical size.
+
 Tests run strictly serially — `[assembly: NonParallelizable]` plus
 `.runsettings` cap workers at 1. We have one VM and one PSSession.
 
@@ -61,17 +94,19 @@ Tests run strictly serially — `[assembly: NonParallelizable]` plus
 
 ```
 Infrastructure/
-├── PowerShellRunner    — host-side: spawns powershell.exe, JSON round-trip
-├── E2EConfig           — loads .vm-creds.json, locates repo + helpers
-├── MsiArtefact         — globs installer/bin/Release/*.msi, SHA-256
-├── VmHost              — host-side Hyper-V wrappers (Restore-, Start-, Stop-, Checkpoint-)
-├── GuestSession        — wraps every call in Invoke-Command -VMName + strips remoting metadata
-├── GuestFs             — Test-Path / Get-Content / Get-Command in the guest
-├── GuestService        — Get-CimInstance Win32_Service assertions
-├── GuestProcess        — Start-Process -Wait in the guest, capture exit/stdout/stderr
-├── MsiInstaller        — msiexec /i and /x, /qn, /l*v
-├── InstalledCheckpoint — naming + staging paths for per-MSI snapshot
-└── E2EFixtureBase      — [OneTimeSetUp] restores snapshot, boots, opens GuestSession
+├── PowerShellRunner     — host-side: spawns powershell.exe, JSON round-trip
+├── E2EConfig            — loads .vm-creds.json, locates repo + helpers
+├── MsiArtefact          — globs installer/bin/Release/*.msi, SHA-256
+├── VmHost               — host-side Hyper-V wrappers (Restore-, Start-, Stop-, Checkpoint-)
+├── GuestSession         — wraps every call in Invoke-Command -VMName + strips remoting metadata
+├── GuestFs              — Test-Path / Get-Content / Get-Command in the guest
+├── GuestService         — Get-CimInstance Win32_Service assertions
+├── GuestProcess         — Start-Process -Wait in the guest, capture exit/stdout/stderr
+├── MsiInstaller         — msiexec /i and /x, /qn, /l*v
+├── InstalledCheckpoint  — naming + staging paths for per-MSI snapshot
+├── E2EFixtureBase       — [OneTimeSetUp] restores snapshot, boots, opens GuestSession
+├── InstalledFixtureBase — adds CheckpointName = installed-clean@<sha8> (Phase B base)
+└── Vhmgr                — `vhmgr.exe` invocation helper (absolute path, redirected I/O)
 ```
 
 The C# → PowerShell bridge spawns `powershell.exe -File <tempscript.ps1>`
@@ -91,6 +126,8 @@ turn `hostname` (a string) into `{"PSComputerName":"…"}`.
 
 Documented here so the gap is visible at code-review time:
 
+### Phase A — installer
+
 * **Idempotent reinstall** — install over install. Need to confirm WiX
   behavior (uninstall-then-install vs upgrade vs error).
 * **MSI repair** — `msiexec /fp`.
@@ -98,5 +135,21 @@ Documented here so the gap is visible at code-review time:
   machine PATH; needs a reboot-and-recheck step.
 * **ProgramData purge policy** — `logs/` and `appsettings.json` lifecycle
   on uninstall is not yet codified.
-* **Defender exclusions** — added by the *service runtime* (not the
-  installer), so they belong in Phase B with the `init`/`create` verbs.
+
+### Phase B — CLI
+
+* **`publish`** — merging an overlay VHDX into its parent and recreating
+  every registered child is a 2+-VHDX workflow that needs its own fixture
+  (create parent, init child, write to child, take overlay, publish,
+  assert children regenerated). Deferred until the overlay/parent
+  semantics are pinned down with the team.
+* **Defender exclusions actually applied** — tests today pass
+  `--add-defender-exclusion false` to avoid the interactive prompt. A
+  separate fixture should pass `true` and assert via `Get-MpPreference
+  -ExclusionPath` inside the guest.
+* **`status` `Attached: True`** — empirically the service reports
+  `Attached: False` for managed children once `init` returns (the OpenVirt
+  handle is closed; the OS volume mount survives independently). This
+  may be a CLI/service contract bug — the line was previously expected
+  to report True. Worth a follow-up with the service team; for now the
+  test asserts only that status fills in Mount path / Parent / Volume GUID.

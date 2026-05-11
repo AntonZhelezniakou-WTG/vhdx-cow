@@ -17,28 +17,13 @@ namespace VhdxManager.E2E.Tests.Installer;
 /// </summary>
 [TestFixture]
 [Order(2)]
-public sealed class Uninstall_Tests : E2EFixtureBase
+public sealed class Uninstall_Tests : InstalledFixtureBase
 {
-	private MsiArtefact _msi = null!;
-	private MsiResult   _uninstallResult = null!;
-
-	// CheckpointName is computed from the MSI hash, but it's accessed by the
-	// base fixture's [OneTimeSetUp] before our [OneTimeSetUp] runs — so we
-	// resolve the MSI lazily on first access and cache the name.
-	private string? _checkpointName;
-	protected override string CheckpointName
-	{
-		get
-		{
-			_msi          ??= MsiArtefact.LoadOrSkip(E2EConfig.FindRepoRoot()!);
-			_checkpointName ??= InstalledCheckpoint.NameFor(_msi);
-			return _checkpointName;
-		}
-	}
+	private MsiResult _uninstallResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{
-		var guestMsiPath = InstalledCheckpoint.GuestMsiPath(_msi);
+		var guestMsiPath = InstalledCheckpoint.GuestMsiPath(Msi);
 		_uninstallResult = await MsiInstaller.UninstallSilentAsync(Guest, guestMsiPath);
 	}
 
@@ -46,7 +31,7 @@ public sealed class Uninstall_Tests : E2EFixtureBase
 	public void Msiexec_SilentUninstall_ExitsZero()
 	{
 		_uninstallResult.Succeeded.Should().BeTrue(
-			$"msiexec /x {_msi.FileName} returned {_uninstallResult.ExitCode}. " +
+			$"msiexec /x {Msi.FileName} returned {_uninstallResult.ExitCode}. " +
 			$"Guest log: {_uninstallResult.LogPath}\nTail:\n{_uninstallResult.LogTail}");
 	}
 
