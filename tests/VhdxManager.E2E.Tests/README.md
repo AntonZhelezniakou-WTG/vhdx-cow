@@ -65,6 +65,7 @@ WiX component layout — keep in sync when the installer changes):
 | `Differencing_Tests` (Order 30) | `create` (parent), `init`, `status`, `reset`, `cleanup` | `installed-clean@<sha8>` | ~3 min |
 | `Convert_Tests` (Order 40) | `convert`, `list` | `installed-clean@<sha8>` | ~2 min |
 | `Logs_Tests` (Order 50) | `logs --since install`, `logs --output`, `logs --since 1h` | `installed-clean@<sha8>` | ~1 min |
+| `DefenderExclusion_Tests` (Order 60) | `create --add-defender-exclusion true`, `Get-MpPreference` assertion | `installed-clean@<sha8>` | ~1 min |
 
 Each scenario fixture boots the VM once (~30 s) and runs its verb sequence
 in `[Order(N)]` — sharing one boot across related steps. Per-verb-per-fixture
@@ -143,10 +144,11 @@ Documented here so the gap is visible at code-review time:
   (create parent, init child, write to child, take overlay, publish,
   assert children regenerated). Deferred until the overlay/parent
   semantics are pinned down with the team.
-* **Defender exclusions actually applied** — tests today pass
-  `--add-defender-exclusion false` to avoid the interactive prompt. A
-  separate fixture should pass `true` and assert via `Get-MpPreference
-  -ExclusionPath` inside the guest.
+* **Defender exclusion removal on delete** — the CLI (and service) have no
+  `RemoveExclusionAsync` path; deleting a VHDX does not remove the Defender
+  exclusion entry. A follow-up should add `Remove-MpPreference` to
+  `DeleteCommand` (and `CleanupCommand`) and assert the path is gone after
+  deletion. `DefenderExclusion_Tests` today covers only the *add* half.
 * **`status` `Attached: True`** — empirically the service reports
   `Attached: False` for managed children once `init` returns (the OpenVirt
   handle is closed; the OS volume mount survives independently). This
