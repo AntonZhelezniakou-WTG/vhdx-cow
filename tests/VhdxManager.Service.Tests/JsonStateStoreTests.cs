@@ -10,7 +10,7 @@ public class JsonStateStoreTests
 	[SetUp]
 	public void SetUp()
 	{
-		tempFile = Path.Combine(Path.GetTempPath(), $"vhdx-cow-test-{Guid.NewGuid()}.json");
+		tempFile = Path.Combine(Path.GetTempPath(), $"vhdx-manager-test-{Guid.NewGuid()}.json");
 	}
 
 	[TearDown]
