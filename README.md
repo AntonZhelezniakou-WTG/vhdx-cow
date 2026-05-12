@@ -2,7 +2,7 @@
 
 VHDX management tool for Windows — create, mount, and merge virtual disks from a single CLI.
 
-Useful for any workflow that benefits from a private NTFS volume backed by a `.vhdx` file: differencing disks for fast worktree resets, ephemeral build folders, isolated dependency caches, etc. The tool itself is agnostic — it just manages VHDXes.
+Useful for any workflow that benefits from a private NTFS or ReFS volume backed by a `.vhdx` file: isolated build outputs, ephemeral scratch spaces, portable dependency caches, copy-on-write snapshots, and similar. The tool itself is agnostic — it just manages VHDXes.
 
 Mounting a VHDX to an NTFS folder requires administrator privileges. A Windows Service handles all privileged disk operations; a user-space CLI (`vhmgr`) communicates with it over a local gRPC/named-pipe channel.
 
@@ -11,19 +11,18 @@ Mounting a VHDX to an NTFS folder requires administrator privileges. A Windows S
 ## Architecture
 
 ```
-main repo
-└── bin/  ←── main-overlay.vhdx  (differencing)
-                      │
-                      ▼
-              main.vhdx  (parent, READ-ONLY)
-                      │
-          ┌───────────┴───────────┐
-          ▼                       ▼
-  wt1-child.vhdx          wt2-child.vhdx
-  worktree1/bin/          worktree2/bin/
+overlay.vhdx  (differencing, mutable)
+      │
+      ▼
+parent.vhdx  (base image, READ-ONLY)
+      │
+ ┌────┴────┐
+ ▼         ▼
+child-A.vhdx   child-B.vhdx
+mount-A/       mount-B/
 ```
 
-The parent VHDX is **immutable**. Both the main repository overlay and each worktree child reference it as a read-only base. Modifying the parent (via the `publish` command) detaches all children, merges the overlay into the parent, and recreates all children from the new baseline.
+The parent VHDX is **immutable**. Each child references it as a read-only base layer and stores only the delta. Modifying the parent (via the `publish` command) detaches all children, merges the overlay into the parent, and recreates all children from the new baseline.
 
 ### Components
 
@@ -119,7 +118,7 @@ Edit `%ProgramData%\VhdxManager\appsettings.json` (or the `appsettings.json` nex
 {
 	"VhdxManager": {
 		"AllowedParentPaths":    ["D:\\VhdxDisks\\Parents"],
-		"AllowedMountBasePaths": ["D:\\GitHub"],
+		"AllowedMountBasePaths": ["D:\\MountPoints"],
 		"AllowedChildBasePaths": ["D:\\VhdxDisks\\Children"]
 	}
 }
@@ -133,35 +132,46 @@ The service rejects any request whose paths fall outside these allow-lists.
 # Check connectivity
 vhmgr ping
 
-# Mount a worktree's bin/ from a parent VHDX
-vhmgr init --parent D:\VhdxDisks\Parents\main.vhdx `
-           --child  D:\VhdxDisks\Children\wt1.vhdx `
-           --mount  D:\GitHub\myrepo-wt1\bin
+# Create a standalone VHDX, format it, and mount it to a folder
+vhmgr create --path D:\VhdxDisks\data.vhdx --size 50G --label data `
+             --mount D:\MountPoints\data
 
-# `create --parent` is equivalent to `init` — produces a differencing child
-# off the given parent and mounts it. `--mount` is required in this form.
-vhmgr create --parent D:\VhdxDisks\Parents\main.vhdx `
-             --path   D:\VhdxDisks\Children\wt1.vhdx `
-             --mount  D:\GitHub\myrepo-wt1\bin
+# Create a differencing child off a parent VHDX and mount it
+vhmgr init --parent D:\VhdxDisks\Parents\base.vhdx `
+           --child  D:\VhdxDisks\Children\snap1.vhdx `
+           --mount  D:\MountPoints\snap1
 
-# `create` without `--parent` builds a standalone VHDX (size/format/optional mount).
-vhmgr create --path D:\VhdxDisks\standalone.vhdx --size 50G --label data `
-             --mount D:\some\folder
+# `create --parent` is equivalent to `init`
+vhmgr create --parent D:\VhdxDisks\Parents\base.vhdx `
+             --path   D:\VhdxDisks\Children\snap2.vhdx `
+             --mount  D:\MountPoints\snap2
 
 # List all active mounts
 vhmgr list
 
-# Discard worktree changes — restore to parent state
-vhmgr reset --child D:\VhdxDisks\Children\wt1.vhdx
+# Show status of a specific mounted disk
+vhmgr status --child D:\VhdxDisks\Children\snap1.vhdx
 
-# Show status of a specific mount
-vhmgr status --child D:\VhdxDisks\Children\wt1.vhdx
+# Discard all changes in a child disk — restore to parent state
+vhmgr reset --child D:\VhdxDisks\Children\snap1.vhdx
 
-# Detach and delete a worktree disk
-vhmgr cleanup --child D:\VhdxDisks\Children\wt1.vhdx
+# Detach and delete a child disk
+vhmgr cleanup --child D:\VhdxDisks\Children\snap1.vhdx
 
-# Merge main overlay into parent and refresh all children
-vhmgr publish --overlay D:\VhdxDisks\main-overlay.vhdx
+# Merge an overlay into its parent and recreate all children from the new baseline
+vhmgr publish --overlay D:\VhdxDisks\overlay.vhdx
+
+# Attach + mount an existing VHDX without creating it
+vhmgr mount --path D:\VhdxDisks\data.vhdx --mount D:\MountPoints\data
+
+# Unmount + detach, keeping the file on disk
+vhmgr unmount --path D:\VhdxDisks\data.vhdx
+
+# Unmount + detach + delete the file
+vhmgr delete D:\VhdxDisks\data.vhdx
+
+# Convert an existing folder into a VHDX-backed folder
+vhmgr convert --folder D:\Data --vhdx D:\VhdxDisks\data.vhdx --size 100G
 ```
 
 #### Global options
@@ -182,27 +192,28 @@ vhmgr publish --overlay D:\VhdxDisks\main-overlay.vhdx
 
 ---
 
-## Typical Workflow
+## Differencing Disk Workflow
+
+The `publish` command supports a copy-on-write pattern where multiple mounted children share a single read-only parent:
 
 ```
-                    ┌─────────────┐
-                    │  main build │  → artifacts written to main-overlay.vhdx
-                    └──────┬──────┘
-                           │  vhmgr publish --overlay main-overlay.vhdx
-                           ▼
-                   parent VHDX updated
-                   all children recreated
-                           │
-          ┌────────────────┼────────────────┐
-          ▼                ▼                ▼
-    worktree 1       worktree 2       worktree N
-    (reset to        (reset to        (reset to
-     parent)          parent)          parent)
-          │
-          │  build only changed projects
-          ▼
-    child VHDX stores only the diff
+                ┌──────────────┐
+                │  overlay.vhdx│  ← accumulate changes here
+                └──────┬───────┘
+                       │  vhmgr publish --overlay overlay.vhdx
+                       ▼
+               parent VHDX updated
+               all children recreated
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+  child-A.vhdx   child-B.vhdx   child-C.vhdx
+  mount-A/       mount-B/       mount-C/
+  (reset to      (reset to      (reset to
+   parent)        parent)        parent)
 ```
+
+Each child stores only its own delta on top of the shared parent. `reset` discards a child's changes without touching the parent or other children.
 
 ---
 
