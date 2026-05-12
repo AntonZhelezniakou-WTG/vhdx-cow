@@ -41,16 +41,16 @@ namespace VhdxManager.E2E.Tests.Cli;
 [Order(70)]
 public sealed class Publish_Tests : InstalledFixtureBase
 {
-	private const string TestDir      = @"C:\E2E-pub";
-	private const string ParentPath   = @"C:\E2E-pub\parent.vhdx";
-	private const string ChildPath    = @"C:\E2E-pub\child.vhdx";
-	private const string ChildMount   = @"C:\E2E-pub\child_mount";
-	private const string OverlayPath  = @"C:\E2E-pub\overlay.vhdx";
-	private const string OverlayMount = @"C:\E2E-pub\overlay_mount";
-	private const string MarkerFile   = @"C:\E2E-pub\overlay_mount\pub-marker.txt";
+	const string TestDir      = @"C:\E2E-pub";
+	const string ParentPath   = @"C:\E2E-pub\parent.vhdx";
+	const string ChildPath    = @"C:\E2E-pub\child.vhdx";
+	const string ChildMount   = @"C:\E2E-pub\child_mount";
+	const string OverlayPath  = @"C:\E2E-pub\overlay.vhdx";
+	const string OverlayMount = @"C:\E2E-pub\overlay_mount";
+	const string MarkerFile   = @"C:\E2E-pub\overlay_mount\pub-marker.txt";
 
-	private bool _setupSucceeded;
-	private bool _publishSucceeded;
+	bool _setupSucceeded;
+	bool _publishSucceeded;
 
 	protected override async Task OnGuestReadyAsync()
 	{

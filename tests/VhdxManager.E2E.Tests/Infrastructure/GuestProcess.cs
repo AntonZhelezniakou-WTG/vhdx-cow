@@ -62,5 +62,5 @@ try {{
 		return s.InvokeJsonAsync<ProcResult>(script, ct);
 	}
 
-	private static string Esc(string s) => s.Replace("'", "''");
+	static string Esc(string s) => s.Replace("'", "''");
 }

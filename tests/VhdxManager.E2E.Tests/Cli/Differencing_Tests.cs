@@ -21,10 +21,10 @@ namespace VhdxManager.E2E.Tests.Cli;
 [Order(30)]
 public sealed class Differencing_Tests : InstalledFixtureBase
 {
-	private const string TestDir    = @"C:\E2E-diff";
-	private const string ParentPath = @"C:\E2E-diff\parent.vhdx";
-	private const string ChildPath  = @"C:\E2E-diff\child.vhdx";
-	private const string MountPath  = @"C:\E2E-diff\worktree";
+	const string TestDir    = @"C:\E2E-diff";
+	const string ParentPath = @"C:\E2E-diff\parent.vhdx";
+	const string ChildPath  = @"C:\E2E-diff\child.vhdx";
+	const string MountPath  = @"C:\E2E-diff\worktree";
 
 	protected override async Task OnGuestReadyAsync()
 	{

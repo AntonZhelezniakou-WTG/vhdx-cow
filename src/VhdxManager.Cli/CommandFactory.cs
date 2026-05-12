@@ -55,6 +55,7 @@ static class CommandFactory
 		{
 			Options = { parentOption, childOption, mountOption, initAddDefenderExclusionOption },
 		};
+
 		initCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -87,6 +88,7 @@ static class CommandFactory
 		{
 			Options = { resetChildOption },
 		};
+
 		resetCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -104,6 +106,7 @@ static class CommandFactory
 		{
 			Options = { cleanupChildOption },
 		};
+
 		cleanupCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -121,6 +124,7 @@ static class CommandFactory
 		{
 			Options = { statusChildOption },
 		};
+
 		statusCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -139,6 +143,7 @@ static class CommandFactory
 		{
 			Options = { overlayOption },
 		};
+
 		publishCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -156,6 +161,7 @@ static class CommandFactory
 
 		// --- list ---
 		var listCommand = new Command("list", "Show all active VHDX mounts");
+
 		listCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -184,6 +190,7 @@ static class CommandFactory
 		{
 			Options = { mountVhdxOption, mountFolderOption },
 		};
+
 		mountCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -207,6 +214,7 @@ static class CommandFactory
 		{
 			Options = { unmountVhdxOption },
 		};
+
 		unmountCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{
@@ -226,6 +234,7 @@ static class CommandFactory
 		{
 			Arguments = { deleteVhdxArg },
 		};
+
 		deleteCommand.SetAction(async (parseResult, ct) =>
 			await RunCommand(parseResult, pipeNameOption, timeoutOption, ct, clientFactory, async (client, token) =>
 			{

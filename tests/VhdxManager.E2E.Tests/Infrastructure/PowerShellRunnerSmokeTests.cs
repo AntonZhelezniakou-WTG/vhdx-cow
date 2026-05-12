@@ -14,7 +14,7 @@ namespace VhdxManager.E2E.Tests.Infrastructure;
 [Category("E2E-Smoke")]
 public sealed class PowerShellRunnerSmokeTests
 {
-	private PowerShellRunner _runner = null!;
+	PowerShellRunner _runner = null!;
 
 	[OneTimeSetUp]
 	public void SetUp()
@@ -53,5 +53,5 @@ public sealed class PowerShellRunnerSmokeTests
 		assertion.Which.Message.Should().Contain("kaboom");
 	}
 
-	private sealed record Record(string Name, int Count);
+	sealed record Record(string Name, int Count);
 }

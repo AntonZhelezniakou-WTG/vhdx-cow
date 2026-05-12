@@ -23,10 +23,10 @@ namespace VhdxManager.E2E.Tests.Infrastructure;
 /// </summary>
 public sealed class GuestSession
 {
-	private readonly string           _vmName;
-	private readonly string           _user;
-	private readonly string           _password;
-	private readonly PowerShellRunner _ps;
+	readonly string           _vmName;
+	readonly string           _user;
+	readonly string           _password;
+	readonly PowerShellRunner _ps;
 
 	public GuestSession(string vmName, string user, string password, PowerShellRunner ps)
 	{
@@ -59,7 +59,7 @@ try {{
 		return _ps.RunVoidAsync(WrapWithCred(script), ct);
 	}
 
-	private string Wrap(string scriptBlock)
+	string Wrap(string scriptBlock)
 	{
 		// Wraps the user script block so it runs inside Invoke-Command -VMName.
 		// The block's last expression is what gets returned to the caller.
@@ -101,7 +101,7 @@ __Strip-PSRemoting $__guestRaw");
 		return sb.ToString();
 	}
 
-	private string WrapWithCred(string script)
+	string WrapWithCred(string script)
 	{
 		var sb = new StringBuilder();
 		sb.AppendLine(CredPrelude());
@@ -109,9 +109,9 @@ __Strip-PSRemoting $__guestRaw");
 		return sb.ToString();
 	}
 
-	private string CredPrelude()
+	string CredPrelude()
 		=> $@"$__guestPw = ConvertTo-SecureString '{Esc(_password)}' -AsPlainText -Force
 $__guestCred = New-Object System.Management.Automation.PSCredential('{_vmName}\{Esc(_user)}', $__guestPw)";
 
-	private static string Esc(string s) => s.Replace("'", "''");
+	static string Esc(string s) => s.Replace("'", "''");
 }

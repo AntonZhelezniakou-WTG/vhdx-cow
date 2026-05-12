@@ -15,7 +15,7 @@ namespace VhdxManager.Cli;
 /// either set a service default or pass the flag explicitly. This matches the
 /// behaviour of every other interactive option in the CLI.
 /// </summary>
-internal static class DefenderExclusionResolver
+static class DefenderExclusionResolver
 {
 	public static async Task<bool> ResolveAsync(
 		bool? cliValue,

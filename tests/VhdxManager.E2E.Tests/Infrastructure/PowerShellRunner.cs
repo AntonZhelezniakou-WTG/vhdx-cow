@@ -39,9 +39,9 @@ public sealed class PowerShellRunner
 {
 	// The CLR's startup time for powershell.exe is ~300ms; making this a static
 	// path resolver (rather than per-invocation) keeps cold tests snappier.
-	private static readonly string PowerShellExe = ResolvePowerShellExe();
+	static readonly string PowerShellExe = ResolvePowerShellExe();
 
-	private readonly string? _helpersScriptPath;
+	readonly string? _helpersScriptPath;
 
 	/// <param name="helpersScriptPath">
 	/// Optional absolute path to <c>tests/e2e/lib/Helpers.ps1</c>. If supplied,
@@ -100,12 +100,12 @@ public sealed class PowerShellRunner
 		_ = await RunInternalAsync(script, captureForJson: false, ct).ConfigureAwait(false);
 	}
 
-	private static readonly JsonSerializerOptions JsonOpts = new()
+	static readonly JsonSerializerOptions JsonOpts = new()
 	{
 		PropertyNameCaseInsensitive = true,
 	};
 
-	private async Task<(string Stdout, string Stderr)> RunInternalAsync(
+	async Task<(string Stdout, string Stderr)> RunInternalAsync(
 		string script, bool captureForJson, CancellationToken ct)
 	{
 		var wrapped = WrapScript(script, captureForJson);
@@ -183,7 +183,7 @@ public sealed class PowerShellRunner
 		}
 	}
 
-	private string WrapScript(string body, bool emitJson)
+	string WrapScript(string body, bool emitJson)
 	{
 		// Inner script runs inside try/catch so a single line failure produces
 		// a structured error rather than a process-wide non-zero exit (which
@@ -227,7 +227,7 @@ public sealed class PowerShellRunner
 		return sb.ToString();
 	}
 
-	private static string ResolvePowerShellExe()
+	static string ResolvePowerShellExe()
 	{
 		// Always prefer the 64-bit Windows PowerShell. On a 64-bit test host
 		// %WINDIR%\System32 *is* the 64-bit copy (32-bit lives in SysWOW64).
@@ -263,7 +263,7 @@ public sealed class PowerShellInvocationException : Exception
 		Stderr   = stderr;
 	}
 
-	private static string BuildMessage(int exitCode, string script, string stdout, string stderr)
+	static string BuildMessage(int exitCode, string script, string stdout, string stderr)
 	{
 		// Truncate massive outputs so a single failure doesn't drown the test
 		// runner's console. Anyone needing the full payload can grab .Stdout /

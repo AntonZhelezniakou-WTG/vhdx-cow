@@ -73,13 +73,12 @@ public sealed class FolderTransferOrchestrator(
 			if (!copyResult.IsSuccess)
 			{
 				logger.LogError(
-					"Robocopy failed (exit code {ExitCode}); leaving staging at {Staging}",
-						copyResult.ExitCode, stagingPath);
+					"Robocopy failed (exit code {ExitCode}); leaving staging at {Staging}", copyResult.ExitCode, stagingPath);
+
 				return new ConvertFolderResult(
 					Success: false,
 					ErrorMessage:
-						$"Robocopy reported errors (exit={copyResult.ExitCode}); " +
-						$"original data preserved at {stagingPath}",
+						$"Robocopy reported errors (exit={copyResult.ExitCode}); original data preserved at {stagingPath}",
 					StagingFolderPath: stagingPath,
 					FilesCopied: copyResult.FilesCopied,
 					BytesCopied: copyResult.BytesCopied,
@@ -97,8 +96,7 @@ public sealed class FolderTransferOrchestrator(
 				catch (Exception ex)
 				{
 					logger.LogWarning(ex,
-						"Failed to delete staging folder {Staging}; left in place for manual cleanup",
-							stagingPath);
+						"Failed to delete staging folder {Staging}; left in place for manual cleanup", stagingPath);
 				}
 			}
 
@@ -191,17 +189,17 @@ public sealed class FolderTransferOrchestrator(
 	static string ComputeStagingPath(string folderPath)
 	{
 		var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-		var candidate = $"{folderPath}.vhdxcow-staging-{timestamp}";
+		var candidate = $"{folderPath}.vhdx-staging-{timestamp}";
 		var index = 0;
 		while (Directory.Exists(candidate) || File.Exists(candidate))
 		{
-			candidate = $"{folderPath}.vhdxcow-staging-{timestamp}-{++index}";
+			candidate = $"{folderPath}.vhdx-staging-{timestamp}-{++index}";
 		}
 		return candidate;
 	}
 
-	static ConvertFolderResult Failed(string staging, string message) =>
-		new(Success: false, ErrorMessage: message, StagingFolderPath: staging, FilesCopied: 0, BytesCopied: 0, VolumeGuidPath: string.Empty);
+	static ConvertFolderResult Failed(string staging, string message)
+		=> new(Success: false, ErrorMessage: message, StagingFolderPath: staging, FilesCopied: 0, BytesCopied: 0, VolumeGuidPath: string.Empty);
 
 	enum ConvertStage
 	{

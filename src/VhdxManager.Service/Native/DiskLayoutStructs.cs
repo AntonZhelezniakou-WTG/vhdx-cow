@@ -10,7 +10,7 @@ namespace VhdxManager.Service.Native;
 /// stackalloc and write into directly.
 /// </summary>
 [SupportedOSPlatform("windows")]
-internal static class DiskLayoutStructs
+static class DiskLayoutStructs
 {
 	// CTL_CODE(IOCTL_DISK_BASE=0x07, function, METHOD_BUFFERED=0, FILE_READ_ACCESS|FILE_WRITE_ACCESS=0x3 << 14)
 	// IOCTL_DISK_CREATE_DISK = CTL_CODE(0x07, 0x16, 0, 3)

@@ -20,9 +20,9 @@ namespace VhdxManager.E2E.Tests.Cli;
 [Order(20)]
 public sealed class StandaloneVhdx_Tests : InstalledFixtureBase
 {
-	private const string TestDir   = @"C:\E2E";
-	private const string VhdxPath  = @"C:\E2E\standalone.vhdx";
-	private const string MountPath = @"C:\E2E\mount";
+	const string TestDir   = @"C:\E2E";
+	const string VhdxPath  = @"C:\E2E\standalone.vhdx";
+	const string MountPath = @"C:\E2E\mount";
 
 	protected override async Task OnGuestReadyAsync()
 	{
@@ -62,8 +62,8 @@ New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
 		// CreateCommand prints "Volume:" / "Volume GUID:" when mounted — both
 		// forms appear in the codebase. Accept either to absorb a future
 		// formatter tweak.
-		(r.StdoutText.Contains("Volume", System.StringComparison.OrdinalIgnoreCase)
-		 || r.StdoutText.Contains("GUID", System.StringComparison.OrdinalIgnoreCase))
+		(r.StdoutText.Contains("Volume", StringComparison.OrdinalIgnoreCase)
+		 || r.StdoutText.Contains("GUID", StringComparison.OrdinalIgnoreCase))
 			.Should().BeTrue($"expected create to confirm the volume mount. stdout: {r.StdoutText}");
 
 		await GuestFs.AssertFileExistsAsync(Guest, VhdxPath);

@@ -8,7 +8,7 @@ namespace VhdxManager.Cli;
 /// `vhmgr create` — create a fresh standalone VHDX (GPT + NTFS) and optionally
 /// mount it to a folder. Missing required options are prompted for via Spectre.
 /// </summary>
-internal static class CreateCommand
+static class CreateCommand
 {
 	public static Command Build(
 		Option<string> pipeNameOption,
@@ -41,7 +41,17 @@ internal static class CreateCommand
 
 		var command = new Command("create", "Create a new VHDX (standalone or differencing child), optionally mount.")
 		{
-			Options = { pathOption, parentOption, sizeOption, labelOption, mountOption, dynamicOption, fixedOption, filesystemOption, addDefenderExclusionOption },
+			Options = {
+				pathOption,
+				parentOption,
+				sizeOption,
+				labelOption,
+				mountOption,
+				dynamicOption,
+				fixedOption,
+				filesystemOption,
+				addDefenderExclusionOption,
+			}
 		};
 
 		command.SetAction(async (parseResult, ct) =>
@@ -55,8 +65,8 @@ internal static class CreateCommand
 			var sizeRaw = parseResult.GetValue(sizeOption);
 			var label = parseResult.GetValue(labelOption);
 			var mount = parseResult.GetValue(mountOption);
-			var dyn = parseResult.GetValue(dynamicOption);
-			var fix = parseResult.GetValue(fixedOption);
+			var isDynamic = parseResult.GetValue(dynamicOption);
+			var isFixed = parseResult.GetValue(fixedOption);
 			var filesystem = parseResult.GetValue(filesystemOption);
 			var addDefenderExclusionRaw = parseResult.GetValue(addDefenderExclusionOption);
 
@@ -65,10 +75,19 @@ internal static class CreateCommand
 				if (!string.IsNullOrEmpty(parent))
 				{
 					return await RunChildBranchAsync(
-						pipeName, timeout, clientFactory,
-						parent, path, mount,
-						sizeRaw, label, dyn, fix, filesystem,
-						addDefenderExclusionRaw, ct);
+						pipeName,
+						timeout,
+						clientFactory,
+						parent,
+						path,
+						mount,
+						sizeRaw,
+						label,
+						isDynamic,
+						isFixed,
+						filesystem,
+						addDefenderExclusionRaw,
+						ct);
 				}
 
 				path ??= InteractivePrompt.AskString("Path to new VHDX file");
@@ -87,18 +106,20 @@ internal static class CreateCommand
 				label ??= InteractivePrompt.AskString("Volume label", defaultValue: "data");
 
 				bool dynamic;
-				if (dyn == true && fix == true)
+				switch (isDynamic)
 				{
-					AnsiConsole.MarkupLine("[red]Cannot specify both --dynamic and --fixed.[/]");
-					return 1;
+					case true when isFixed == true:
+						AnsiConsole.MarkupLine("[red]Cannot specify both --dynamic and --fixed.[/]");
+						return 1;
+					case true:
+						dynamic = true;
+						break;
+					default:
+					{
+						dynamic = isFixed != true; // default: dynamic, no prompt
+						break;
+					}
 				}
-
-				if (dyn == true)
-					dynamic = true;
-				else if (fix == true)
-					dynamic = false;
-				else
-					dynamic = true; // default: dynamic, no prompt
 
 				mount ??= InteractivePrompt.AskOptionalString("Mount to folder (leave blank to skip)");
 

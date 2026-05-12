@@ -11,7 +11,7 @@ namespace VhdxManager.Service.Native;
 /// Callback delivers progress and final status as a string-typed enum.
 /// </summary>
 [SupportedOSPlatform("windows")]
-internal static class FmIfsImports
+static class FmIfsImports
 {
 	public enum FmIfsPacketType
 	{

@@ -16,11 +16,11 @@ namespace VhdxManager.E2E.Tests.Cli;
 [Order(40)]
 public sealed class Convert_Tests : InstalledFixtureBase
 {
-	private const string SourceDir   = @"C:\E2E-conv\src";
-	private const string VhdxPath    = @"C:\E2E-conv\src.vhdx";
-	private const string MarkerFile  = @"C:\E2E-conv\src\hello.txt";
+	const string SourceDir   = @"C:\E2E-conv\src";
+	const string VhdxPath    = @"C:\E2E-conv\src.vhdx";
+	const string MarkerFile  = @"C:\E2E-conv\src\hello.txt";
 
-	private bool _convertSucceeded;
+	bool _convertSucceeded;
 
 	protected override async Task OnGuestReadyAsync()
 	{

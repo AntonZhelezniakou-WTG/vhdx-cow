@@ -25,36 +25,47 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 
 	// ─── Read-only / unary ─────────────────────────────────────────────────
 
-	public Task<PingReply> PingAsync(CancellationToken ct = default)
-		=> SafeUnaryAsync(t => client.PingAsync(new PingRequest(), cancellationToken: t).ResponseAsync, ct);
+	public Task<PingReply> PingAsync(
+		CancellationToken ct = default)
+		=> SafeUnaryAsync(
+			t => client.PingAsync(new PingRequest(), cancellationToken: t).ResponseAsync,
+			ct);
 
 	public Task<GetStatusReply> GetStatusAsync(string childVhdxPath, CancellationToken ct = default)
-		=> SafeUnaryAsync(t => client.GetStatusAsync(
-			new GetStatusRequest { ChildVhdxPath = childVhdxPath }, cancellationToken: t).ResponseAsync, ct);
+		=> SafeUnaryAsync(
+			t => client.GetStatusAsync(new GetStatusRequest { ChildVhdxPath = childVhdxPath }, cancellationToken: t).ResponseAsync,
+			ct);
 
 	public Task<ListMountsReply> ListMountsAsync(CancellationToken ct = default)
-		=> SafeUnaryAsync(t => client.ListMountsAsync(new ListMountsRequest(), cancellationToken: t).ResponseAsync, ct);
+		=> SafeUnaryAsync(
+			t => client.ListMountsAsync(new ListMountsRequest(), cancellationToken: t).ResponseAsync,
+			ct);
 
 	public Task<GetSettingsReply> GetSettingsAsync(CancellationToken ct = default)
-		=> SafeUnaryAsync(t => client.GetSettingsAsync(new GetSettingsRequest(), cancellationToken: t).ResponseAsync, ct);
+		=> SafeUnaryAsync(
+			t => client.GetSettingsAsync(new GetSettingsRequest(), cancellationToken: t).ResponseAsync,
+			ct);
 
 	public Task<SetSettingsReply> SetSettingsAsync(
 		bool? defaultAddDefenderExclusion,
 		bool clearAddDefenderExclusion,
 		CancellationToken ct = default)
-		=> SafeUnaryAsync(t => client.SetSettingsAsync(new SetSettingsRequest
-		{
-			HasDefaultAddDefenderExclusion = defaultAddDefenderExclusion.HasValue,
-			DefaultAddDefenderExclusion = defaultAddDefenderExclusion ?? false,
-			ClearDefaultAddDefenderExclusion = clearAddDefenderExclusion,
-		}, cancellationToken: t).ResponseAsync, ct);
+		=> SafeUnaryAsync(
+			t => client.SetSettingsAsync(new SetSettingsRequest
+			{
+				HasDefaultAddDefenderExclusion = defaultAddDefenderExclusion.HasValue,
+				DefaultAddDefenderExclusion = defaultAddDefenderExclusion ?? false,
+				ClearDefaultAddDefenderExclusion = clearAddDefenderExclusion,
+			}, cancellationToken: t).ResponseAsync,
+			ct);
 
 	// ─── Streaming mutating operations ─────────────────────────────────────
 
 	public Task<CreateChildReply> CreateChildAsync(
 		string parentVhdxPath, string childVhdxPath, string mountPath,
 		bool addDefenderExclusion,
-		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
+		Action<ProgressEvent>? onProgress = null,
+		CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.CreateChild(new CreateChildRequest
 			{
@@ -65,39 +76,47 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 			}, cancellationToken: t),
 			s => s.EventCase == CreateChildStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == CreateChildStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	public Task<ResetChildReply> ResetChildAsync(
 		string childVhdxPath,
-		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
+		Action<ProgressEvent>? onProgress = null,
+		CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.ResetChild(new ResetChildRequest { ChildVhdxPath = childVhdxPath }, cancellationToken: t),
 			s => s.EventCase == ResetChildStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == ResetChildStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	public Task<DetachReply> DetachAsync(
 		string childVhdxPath,
-		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
+		Action<ProgressEvent>? onProgress = null,
+		CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.Detach(new DetachRequest { ChildVhdxPath = childVhdxPath }, cancellationToken: t),
 			s => s.EventCase == DetachStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == DetachStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	public Task<PublishReply> PublishAsync(
 		string overlayVhdxPath,
-		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
+		Action<ProgressEvent>? onProgress = null,
+		CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.Publish(new PublishRequest { OverlayVhdxPath = overlayVhdxPath }, cancellationToken: t),
 			s => s.EventCase == PublishStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == PublishStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	public Task<CreateVhdxReply> CreateVhdxAsync(
 		string vhdxPath, long sizeBytes, bool dynamic, string volumeLabel, string mountPath, string filesystem,
 		bool addDefenderExclusion,
-		Action<ProgressEvent>? onProgress = null, CancellationToken ct = default)
+		Action<ProgressEvent>? onProgress = null,
+		CancellationToken ct = default)
 		=> ConsumeStreamAsync(
 			t => client.CreateVhdx(new CreateVhdxRequest
 			{
@@ -111,7 +130,8 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 			}, cancellationToken: t),
 			s => s.EventCase == CreateVhdxStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == CreateVhdxStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	public Task<AttachAndMountReply> AttachAndMountAsync(
 		string vhdxPath, string mountPath,
@@ -124,7 +144,8 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 			}, cancellationToken: t),
 			s => s.EventCase == AttachAndMountStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == AttachAndMountStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	public Task<UnmountAndDetachReply> UnmountAndDetachAsync(
 		string vhdxPath,
@@ -133,7 +154,8 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 			t => client.UnmountAndDetach(new UnmountAndDetachRequest { VhdxPath = vhdxPath }, cancellationToken: t),
 			s => s.EventCase == UnmountAndDetachStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == UnmountAndDetachStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	public Task<ConvertFolderReply> ConvertFolderAsync(
 		string folderPath, string vhdxPath, long sizeBytes, bool dynamic, string volumeLabel, string filesystem, bool deleteStaging,
@@ -153,7 +175,8 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 			}, cancellationToken: t),
 			s => s.EventCase == ConvertFolderStream.EventOneofCase.Progress ? s.Progress : null,
 			s => s.EventCase == ConvertFolderStream.EventOneofCase.Final ? s.Final : null,
-			onProgress, ct);
+			onProgress,
+			ct);
 
 	// ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -225,9 +248,12 @@ public sealed class VhdxManagerClient : IVhdxManagerClient
 
 	CancellationTokenSource? LinkTimeout(CancellationToken ct)
 	{
-		if (!timeout.HasValue) return null;
+		if (!timeout.HasValue)
+			return null;
+
 		var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		cts.CancelAfter(timeout.Value);
+
 		return cts;
 	}
 }

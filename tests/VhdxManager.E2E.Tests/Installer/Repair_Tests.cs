@@ -23,9 +23,9 @@ namespace VhdxManager.E2E.Tests.Installer;
 [Order(4)]
 public sealed class Repair_Tests : InstalledFixtureBase
 {
-	private const string CliExe = @"C:\Program Files\VhdxManager\Cli\vhmgr.exe";
+	const string CliExe = @"C:\Program Files\VhdxManager\Cli\vhmgr.exe";
 
-	private MsiResult _repairResult = null!;
+	MsiResult _repairResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{

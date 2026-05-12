@@ -13,8 +13,8 @@ namespace VhdxManager.E2E.Tests.Infrastructure;
 /// </summary>
 public sealed class VmHost
 {
-	private readonly string           _vmName;
-	private readonly PowerShellRunner _ps;
+	readonly string           _vmName;
+	readonly PowerShellRunner _ps;
 
 	public VmHost(string vmName, PowerShellRunner ps)
 	{
@@ -81,5 +81,5 @@ Wait-VmReady -VmName '{_vmName}' -Credential $cred -TimeoutMinutes {minutes} | O
 		return _ps.RunVoidAsync(script, ct);
 	}
 
-	private static string Escape(string s) => s.Replace("'", "''");
+	static string Escape(string s) => s.Replace("'", "''");
 }

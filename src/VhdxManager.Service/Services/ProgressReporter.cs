@@ -18,36 +18,58 @@ public sealed class ProgressReporter<TStream>(
 	IServerStreamWriter<TStream> writer,
 	Func<ProgressEvent, TStream> wrapProgress)
 {
-	public async Task StartedAsync(string step, string detail = "", CancellationToken ct = default)
-		=> await writer.WriteAsync(wrapProgress(new ProgressEvent
-		{
-			Step = step,
-			Phase = ProgressPhase.Started,
-			Detail = detail,
-		}), ct);
+	public async Task StartedAsync(
+		string step,
+		string detail = "",
+		CancellationToken ct = default)
+		=> await writer.WriteAsync(
+			wrapProgress(
+				new ProgressEvent
+				{
+					Step = step,
+					Phase = ProgressPhase.Started,
+					Detail = detail,
+				}),
+			ct);
 
-	public async Task CompletedAsync(string step, string detail = "", CancellationToken ct = default)
-		=> await writer.WriteAsync(wrapProgress(new ProgressEvent
-		{
-			Step = step,
-			Phase = ProgressPhase.Completed,
-			Detail = detail,
-		}), ct);
+	public async Task CompletedAsync(
+		string step,
+		string detail = "",
+		CancellationToken ct = default)
+		=> await writer.WriteAsync(
+			wrapProgress(
+				new ProgressEvent
+				{
+					Step = step,
+					Phase = ProgressPhase.Completed,
+					Detail = detail,
+				}),
+			ct);
 
-	public async Task FailedAsync(string step, string detail, CancellationToken ct = default)
-		=> await writer.WriteAsync(wrapProgress(new ProgressEvent
-		{
-			Step = step,
-			Phase = ProgressPhase.Failed,
-			Detail = detail,
-		}), ct);
+	public async Task FailedAsync(
+		string step,
+		string detail,
+		CancellationToken ct = default)
+		=> await writer.WriteAsync(
+			wrapProgress(
+				new ProgressEvent
+				{
+					Step = step,
+					Phase = ProgressPhase.Failed,
+					Detail = detail,
+				}),
+			ct);
 
 	/// <summary>
 	/// Wraps a single step: emits STARTED, runs the work, emits COMPLETED.
 	/// On exception emits FAILED and rethrows so the handler can produce a
 	/// final-result message with the error.
 	/// </summary>
-	public async Task StepAsync(string step, Func<Task> work, string startDetail = "", CancellationToken ct = default)
+	public async Task StepAsync(
+		string step,
+		Func<Task> work,
+		string startDetail = "",
+		CancellationToken ct = default)
 	{
 		await StartedAsync(step, startDetail, ct);
 		try
@@ -65,7 +87,11 @@ public sealed class ProgressReporter<TStream>(
 	/// <summary>
 	/// Step wrapper that returns a value from the work delegate.
 	/// </summary>
-	public async Task<T> StepAsync<T>(string step, Func<Task<T>> work, string startDetail = "", CancellationToken ct = default)
+	public async Task<T> StepAsync<T>(
+		string step,
+		Func<Task<T>> work,
+		string startDetail = "",
+		CancellationToken ct = default)
 	{
 		await StartedAsync(step, startDetail, ct);
 		T result;

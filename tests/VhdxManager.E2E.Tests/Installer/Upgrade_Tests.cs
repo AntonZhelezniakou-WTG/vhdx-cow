@@ -29,11 +29,11 @@ namespace VhdxManager.E2E.Tests.Installer;
 [Order(5)]
 public sealed class Upgrade_Tests : InstalledFixtureBase
 {
-	private const string MarkerFile = @"C:\ProgramData\VhdxManager\upgrade-marker.txt";
-	private const string MarkerText = "preserved-across-upgrade";
+	const string MarkerFile = @"C:\ProgramData\VhdxManager\upgrade-marker.txt";
+	const string MarkerText = "preserved-across-upgrade";
 
-	private BumpedMsi _bumpedMsi    = null!;
-	private MsiResult _upgradeResult = null!;
+	BumpedMsi _bumpedMsi    = null!;
+	MsiResult _upgradeResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{

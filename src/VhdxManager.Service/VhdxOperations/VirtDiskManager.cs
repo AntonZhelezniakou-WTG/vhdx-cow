@@ -12,8 +12,8 @@ namespace VhdxManager.Service.VhdxOperations;
 /// </summary>
 public sealed class VirtDiskManager(ILogger<VirtDiskManager> logger) : IVirtDiskManager
 {
-	static readonly Guid VendorMicrosoft = new("EC984AEC-A0F9-47e9-901F-71415A66345B");
 	const uint DeviceVhdx = 3;
+	static readonly Guid VendorMicrosoft = new("EC984AEC-A0F9-47e9-901F-71415A66345B");
 
 	public Task CreateDifferencingDiskAsync(string parentVhdxPath, string childVhdxPath, CancellationToken ct)
 		=> Task.Run(()

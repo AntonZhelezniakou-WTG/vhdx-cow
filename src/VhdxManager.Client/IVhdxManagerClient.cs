@@ -56,10 +56,6 @@ public interface IVhdxManagerClient : IDisposable
 		Action<ProgressEvent>? onProgress = null,
 		CancellationToken ct = default);
 
-	/// <summary>
-	/// Create a standalone VHDX, partition GPT, format the volume, optionally mount.
-	/// </summary>
-	/// <param name="filesystem">Filesystem name. Empty string = service default (ReFS). Other accepted values: "ReFS", "NTFS".</param>
 	Task<CreateVhdxReply> CreateVhdxAsync(
 		string vhdxPath,
 		long sizeBytes,
@@ -82,10 +78,6 @@ public interface IVhdxManagerClient : IDisposable
 		Action<ProgressEvent>? onProgress = null,
 		CancellationToken ct = default);
 
-	/// <summary>
-	/// Rename source folder aside, create + mount a new VHDX in its place, robocopy contents back.
-	/// </summary>
-	/// <param name="filesystem">Filesystem name. Empty string = service default (ReFS). Other accepted values: "ReFS", "NTFS".</param>
 	Task<ConvertFolderReply> ConvertFolderAsync(
 		string folderPath,
 		string vhdxPath,

@@ -30,8 +30,8 @@ public sealed class ServiceSettingsStore(ILogger<ServiceSettingsStore> logger) :
 	/// Resolved at first use so unit tests that swap <see cref="AppContext.BaseDirectory"/>
 	/// pick the right file.
 	/// </summary>
-	static string SettingsPath =>
-		Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+	static string SettingsPath
+		=> Path.Combine(AppContext.BaseDirectory, "appsettings.json");
 
 	public bool? GetDefaultAddDefenderExclusion()
 	{
@@ -46,17 +46,9 @@ public sealed class ServiceSettingsStore(ILogger<ServiceSettingsStore> logger) :
 			using var fs = File.OpenRead(path);
 			var root = JsonNode.Parse(fs);
 			var node = root?[Section]?[DefaultsKey]?[AddDefenderExclusionKey];
-			if (node is null)
-			{
-				return null;
-			}
 			// JsonNode for a JSON `null` literal still parses non-null; prefer the
 			// underlying JsonValue check.
-			if (node is JsonValue v && v.TryGetValue(out bool b))
-			{
-				return b;
-			}
-			return null;
+			return node is JsonValue v && v.TryGetValue(out bool b) ? b : null;
 		}
 		catch (Exception ex)
 		{
@@ -79,7 +71,7 @@ public sealed class ServiceSettingsStore(ILogger<ServiceSettingsStore> logger) :
 			if (File.Exists(path))
 			{
 				await using var fs = File.OpenRead(path);
-				root = JsonNode.Parse(fs) as JsonObject
+				root = await JsonNode.ParseAsync(fs, cancellationToken: ct) as JsonObject
 					?? throw new InvalidOperationException(
 						$"Settings file {path} did not parse as a JSON object.");
 			}

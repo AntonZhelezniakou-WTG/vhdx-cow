@@ -6,10 +6,10 @@ namespace VhdxManager.Cli;
 
 /// <summary>
 /// `vhmgr config` — read/write service-side defaults persisted in the
-/// service's appsettings.json. Currently exposes one key:
+/// service's appsettings.json. Currently, exposes one key:
 /// <c>add-defender-exclusion</c> (tri-state: true / false / unset).
 /// </summary>
-internal static class ConfigCommand
+static class ConfigCommand
 {
 	// Single user-visible key. Adding a new key means: extend the proto with
 	// another tri-state pair, extend ServiceSettingsStore, and add a case here.
@@ -129,8 +129,8 @@ internal static class ConfigCommand
 
 	// ---- helpers ----
 
-	static bool IsKnownKey(string key) =>
-		string.Equals(key, AddDefenderExclusionKey, StringComparison.OrdinalIgnoreCase);
+	static bool IsKnownKey(string key)
+		=> string.Equals(key, AddDefenderExclusionKey, StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>
 	/// Parses 'true' / 'false' (set the value) and 'unset' / 'clear' (wipe).
@@ -159,7 +159,7 @@ internal static class ConfigCommand
 		=> has ? value.ToString().ToLowerInvariant() : "(unset)";
 
 	static (string PipeName, TimeSpan? Timeout) ReadGlobals(
-		System.CommandLine.ParseResult parseResult,
+		ParseResult parseResult,
 		Option<string> pipeNameOption,
 		Option<int?> timeoutOption)
 	{

@@ -29,12 +29,12 @@ namespace VhdxManager.E2E.Tests.Cli;
 [Order(60)]
 public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 {
-	private const string TestDir   = @"C:\E2E-def";
-	private const string VhdxPath  = @"C:\E2E-def\test.vhdx";
-	private const string MountPath = @"C:\E2E-def\mount";
+	const string TestDir   = @"C:\E2E-def";
+	const string VhdxPath  = @"C:\E2E-def\test.vhdx";
+	const string MountPath = @"C:\E2E-def\mount";
 
-	private bool _defenderAvailable;
-	private bool _createSucceeded;
+	bool _defenderAvailable;
+	bool _createSucceeded;
 
 	protected override async Task OnGuestReadyAsync()
 	{

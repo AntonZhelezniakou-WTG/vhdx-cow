@@ -24,7 +24,7 @@ public sealed class E2EConfig
 	public string GuestUsername     { get; }
 	public string GuestPassword     { get; }
 
-	private E2EConfig(string repoRoot, string helpers, string vmName,
+	E2EConfig(string repoRoot, string helpers, string vmName,
 		string user, string password)
 	{
 		RepoRoot          = repoRoot;
@@ -83,7 +83,7 @@ public sealed class E2EConfig
 		return new E2EConfig(repoRoot!, helpers, creds.VmName!, creds.Username!, creds.Password!);
 	}
 
-	private static readonly JsonSerializerOptions JsonOpts = new()
+	static readonly JsonSerializerOptions JsonOpts = new()
 	{
 		PropertyNameCaseInsensitive = true,
 	};
@@ -105,5 +105,5 @@ public sealed class E2EConfig
 		return null;
 	}
 
-	private sealed record VmCreds(string? VmName, string? Username, string? Password);
+	sealed record VmCreds(string? VmName, string? Username, string? Password);
 }

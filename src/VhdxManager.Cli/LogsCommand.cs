@@ -37,11 +37,7 @@ static class LogsCommand
 	{
 		var sinceOption = new Option<string>("--since")
 		{
-			Description =
-				"Start time. Accepted forms: " +
-				"'install' (since the service binary's install time, default), " +
-				"a duration like '15m', '2h', '3d', " +
-				"or an ISO datetime like '2026-05-07T12:00:00'.",
+			Description = "Start time. Accepted forms: 'install' (since the service binary's install time, default), a duration like '15m', '2h', '3d', or an ISO datetime like '2026-05-07T12:00:00'.",
 			DefaultValueFactory = _ => "install",
 		};
 
@@ -194,13 +190,9 @@ static class LogsCommand
 		// install). NOT CreationTime — NTFS file tunneling preserves CreationTime
 		// across overwrites and would resolve to the FIRST install, not the latest.
 		var imagePath = TryGetServiceImagePath();
-		if (imagePath is not null && File.Exists(imagePath))
-		{
-			return File.GetLastWriteTimeUtc(imagePath);
-		}
-
-		// Final fallback: 24 hours ago. Better than throwing.
-		return DateTime.UtcNow.AddDays(-1);
+		return imagePath is not null && File.Exists(imagePath)
+			? File.GetLastWriteTimeUtc(imagePath)
+			: DateTime.UtcNow.AddDays(-1); // Final fallback: 24 hours ago. Better than throwing.
 	}
 
 	static DateTime? TryFindLatestServiceInstallEvent()
@@ -269,26 +261,22 @@ static class LogsCommand
 	static IEnumerable<CollectedEvent> ReadSystemScmEvents(DateTime startUtc)
 	{
 		// XPath filter — Windows interprets SystemTime as UTC in 'O' format.
-		var xpath =
-			$"*[System[Provider[@Name='{ScmProvider}'] " +
-			$"and TimeCreated[@SystemTime>='{startUtc:yyyy-MM-ddTHH:mm:ss.fffffffZ}']]]";
+		var xpath = $"*[System[Provider[@Name='{ScmProvider}'] and TimeCreated[@SystemTime>='{startUtc:yyyy-MM-ddTHH:mm:ss.fffffffZ}']]]";
 
 		var query = new EventLogQuery(SystemLogName, PathType.LogName, xpath);
 		using var reader = new EventLogReader(query);
 
 		while (reader.ReadEvent() is { } record)
 		{
-			using (record)
+			using var eventRecord = record;
+			var message = SafeFormat(record);
+			// SCM logs many service events; keep only ones that mention us.
+			if (message is null || !MentionsService(message))
 			{
-				var message = SafeFormat(record);
-				// SCM logs many service events; keep only ones that mention us.
-				if (message is null || !MentionsService(message))
-				{
-					continue;
-				}
-
-				yield return ToCollectedEvent(SystemLogName, record, message);
+				continue;
 			}
+
+			yield return ToCollectedEvent(SystemLogName, record, message);
 		}
 	}
 
@@ -316,9 +304,7 @@ static class LogsCommand
 
 	static IEnumerable<CollectedEvent> ReadApplicationEventsForProvider(string provider, DateTime startUtc)
 	{
-		var xpath =
-			$"*[System[Provider[@Name='{provider}'] " +
-			$"and TimeCreated[@SystemTime>='{startUtc:yyyy-MM-ddTHH:mm:ss.fffffffZ}']]]";
+		var xpath = $"*[System[Provider[@Name='{provider}'] and TimeCreated[@SystemTime>='{startUtc:yyyy-MM-ddTHH:mm:ss.fffffffZ}']]]";
 
 		var query = new EventLogQuery(ApplicationLogName, PathType.LogName, xpath);
 		using var reader = new EventLogReader(query);

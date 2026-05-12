@@ -47,5 +47,5 @@ public static class GuestFs
 			$"[bool](Get-Command -Name '{Esc(exeName)}' -CommandType Application -ErrorAction SilentlyContinue)",
 			ct);
 
-	private static string Esc(string s) => s.Replace("'", "''");
+	static string Esc(string s) => s.Replace("'", "''");
 }

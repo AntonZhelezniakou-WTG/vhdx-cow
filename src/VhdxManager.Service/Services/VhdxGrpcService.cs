@@ -338,9 +338,8 @@ public sealed class VhdxGrpcService(
 				                           StringComparison.OrdinalIgnoreCase))
 				.ToList();
 
-			var overlayMount = allMounts.FirstOrDefault(m =>
-				string.Equals(m.ChildVhdxPath, request.OverlayVhdxPath,
-				              StringComparison.OrdinalIgnoreCase));
+			var overlayMount = allMounts.FirstOrDefault(m
+				=> string.Equals(m.ChildVhdxPath, request.OverlayVhdxPath, StringComparison.OrdinalIgnoreCase));
 
 			await reporter.StepAsync($"Detaching {otherMounts.Count} child mount(s)",
 				async () =>
@@ -640,9 +639,10 @@ public sealed class VhdxGrpcService(
 		var filesystem = request.Filesystem;  // empty → default to ReFS in initializer
 
 		// Convert is one composite step from the protocol's point of view; the
-		// orchestrator emits its own structured logs for the substeps. If finer-
-		// grained progress is needed later, IFolderTransferOrchestrator can take
-		// an IStepReporter and call back into ProgressReporter.
+		// orchestrator emits its own structured logs for the substeps.
+		// If finer-grained progress is needed later,
+		// IFolderTransferOrchestrator can take an IStepReporter and
+		// call back into ProgressReporter.
 		await reporter.StartedAsync("Converting folder", request.FolderPath, ct);
 
 		var result = await folderTransferOrchestrator.ConvertFolderAsync(

@@ -19,7 +19,7 @@ namespace VhdxManager.E2E.Tests.Installer;
 [Order(2)]
 public sealed class Uninstall_Tests : InstalledFixtureBase
 {
-	private MsiResult _uninstallResult = null!;
+	MsiResult _uninstallResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{

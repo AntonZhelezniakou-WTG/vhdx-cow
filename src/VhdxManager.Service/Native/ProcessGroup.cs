@@ -72,11 +72,9 @@ public sealed class ProcessGroup : IDisposable
 			?? throw new InvalidOperationException("Process.Start returned null.");
 		try
 		{
-			if (!AssignProcessToJobObject(jobHandle, process.Handle))
-			{
-				throw new Win32Exception(Marshal.GetLastWin32Error(), "AssignProcessToJobObject failed.");
-			}
-			return process;
+			return AssignProcessToJobObject(jobHandle, process.Handle)
+				? process
+				: throw new Win32Exception(Marshal.GetLastWin32Error(), "AssignProcessToJobObject failed.");
 		}
 		catch
 		{

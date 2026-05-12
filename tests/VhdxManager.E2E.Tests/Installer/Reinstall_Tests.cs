@@ -24,7 +24,7 @@ namespace VhdxManager.E2E.Tests.Installer;
 [Order(3)]
 public sealed class Reinstall_Tests : InstalledFixtureBase
 {
-	private MsiResult _reinstallResult = null!;
+	MsiResult _reinstallResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{

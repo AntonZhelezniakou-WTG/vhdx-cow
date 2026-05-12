@@ -9,7 +9,7 @@ namespace VhdxManager.Cli;
 /// Renames the source folder aside, creates + mounts a fresh VHDX in its place,
 /// robocopies content back, optionally deletes the staging copy.
 /// </summary>
-internal static class ConvertCommand
+static class ConvertCommand
 {
 	public static Command Build(
 		Option<string> pipeNameOption,
@@ -39,8 +39,16 @@ internal static class ConvertCommand
 		{
 			Options =
 			{
-				folderOption, vhdxOption, sizeOption, labelOption,
-				dynamicOption, fixedOption, keepStagingOption, yesOption, filesystemOption, addDefenderExclusionOption,
+				folderOption,
+				vhdxOption,
+				sizeOption,
+				labelOption,
+				dynamicOption,
+				fixedOption,
+				keepStagingOption,
+				yesOption,
+				filesystemOption,
+				addDefenderExclusionOption,
 			},
 		};
 
@@ -51,11 +59,11 @@ internal static class ConvertCommand
 			var timeout = timeoutSeconds.HasValue ? TimeSpan.FromSeconds(timeoutSeconds.Value) : (TimeSpan?)null;
 
 			var folder = parseResult.GetValue(folderOption);
-			var vhdx = parseResult.GetValue(vhdxOption);
+			var vhdxPath = parseResult.GetValue(vhdxOption);
 			var sizeRaw = parseResult.GetValue(sizeOption);
 			var label = parseResult.GetValue(labelOption);
-			var dyn = parseResult.GetValue(dynamicOption);
-			var fix = parseResult.GetValue(fixedOption);
+			var isDynamic = parseResult.GetValue(dynamicOption);
+			var isFixed = parseResult.GetValue(fixedOption);
 			var keepStaging = parseResult.GetValue(keepStagingOption);
 			var yes = parseResult.GetValue(yesOption);
 			var filesystem = parseResult.GetValue(filesystemOption);
@@ -64,7 +72,7 @@ internal static class ConvertCommand
 			try
 			{
 				folder ??= InteractivePrompt.AskString("Folder to convert");
-				vhdx ??= InteractivePrompt.AskString("VHDX file path");
+				vhdxPath ??= InteractivePrompt.AskString("VHDX file path");
 
 				long sizeBytes;
 				if (string.IsNullOrEmpty(sizeRaw))
@@ -80,18 +88,24 @@ internal static class ConvertCommand
 				label ??= InteractivePrompt.AskString("Volume label", defaultValue: "data");
 
 				bool dynamic;
-				if (dyn == true && fix == true)
+				switch (isDynamic)
 				{
-					AnsiConsole.MarkupLine("[red]Cannot specify both --dynamic and --fixed.[/]");
-					return 1;
+					case true when isFixed == true:
+						AnsiConsole.MarkupLine("[red]Cannot specify both --dynamic and --fixed.[/]");
+						return 1;
+					case true:
+						dynamic = true;
+						break;
+					default:
+					{
+						dynamic = isFixed != true; // default: dynamic, no prompt
+						break;
+					}
 				}
-				else if (dyn == true) dynamic = true;
-				else if (fix == true) dynamic = false;
-				else dynamic = true; // default: dynamic, no prompt
 
 				// Filesystem: default ReFS, no interactive prompt (user must opt-in to NTFS via --filesystem).
-				var fs = CreateCommand.NormalizeFilesystem(filesystem);
-				if (fs is null)
+				filesystem = CreateCommand.NormalizeFilesystem(filesystem);
+				if (filesystem is null)
 				{
 					AnsiConsole.MarkupLine($"[red]Invalid --filesystem '{filesystem}'.[/] Use 'ReFS' or 'NTFS'.");
 					return 1;
@@ -108,9 +122,9 @@ internal static class ConvertCommand
 				{
 					AnsiConsole.MarkupLine("");
 					AnsiConsole.MarkupLine($"[bold]Folder:[/]       {folder}");
-					AnsiConsole.MarkupLine($"[bold]VHDX:[/]         {vhdx}");
+					AnsiConsole.MarkupLine($"[bold]VHDX:[/]         {vhdxPath}");
 					AnsiConsole.MarkupLine($"[bold]Size:[/]         {InteractivePrompt.FormatSize(sizeBytes)} ({(dynamic ? "dynamic" : "fixed")})");
-					AnsiConsole.MarkupLine($"[bold]Filesystem:[/]   {fs}");
+					AnsiConsole.MarkupLine($"[bold]Filesystem:[/]   {filesystem}");
 					AnsiConsole.MarkupLine($"[bold]Label:[/]        {label}");
 					AnsiConsole.MarkupLine($"[bold]Keep staging:[/] {keepStaging}");
 					AnsiConsole.MarkupLine($"[bold]Defender:[/]     {addDefender}");
@@ -123,13 +137,19 @@ internal static class ConvertCommand
 					}
 				}
 
-				AnsiConsole.MarkupLine($"[bold]vhmgr convert[/]");
+				AnsiConsole.MarkupLine("[bold]vhmgr convert[/]");
 				using var progress = new ProgressRenderer();
 				var resp = await client.ConvertFolderAsync(
-					folder, vhdx, sizeBytes, dynamic, label!, fs,
+					folder,
+					vhdxPath,
+					sizeBytes,
+					dynamic,
+					label,
+					filesystem,
 					deleteStaging: !keepStaging,
 					addDefender,
-					progress.Handle, ct);
+					progress.Handle,
+					ct);
 
 				if (resp.Success)
 				{
@@ -172,8 +192,4 @@ internal static class ConvertCommand
 
 		return command;
 	}
-
-	readonly record struct ConvertFolderReplyLike(
-		bool Success, string ErrorMessage, string StagingFolderPath,
-		long FilesCopied, long BytesCopied);
 }

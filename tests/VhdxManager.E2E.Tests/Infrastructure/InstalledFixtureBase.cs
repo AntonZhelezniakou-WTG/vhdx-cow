@@ -15,10 +15,10 @@ namespace VhdxManager.E2E.Tests.Infrastructure;
 /// </summary>
 public abstract class InstalledFixtureBase : E2EFixtureBase
 {
-	private MsiArtefact? _msiCache;
+	MsiArtefact? _msiCache;
 	protected MsiArtefact Msi => _msiCache ??= MsiArtefact.LoadOrSkip(E2EConfig.FindRepoRoot()!);
 
-	private string? _checkpointCache;
+	string? _checkpointCache;
 	protected override string CheckpointName
 		// Resolve lazily — the base class accesses this in [OneTimeSetUp] before
 		// our overrides have run. MsiArtefact.LoadOrSkip will Assert.Ignore

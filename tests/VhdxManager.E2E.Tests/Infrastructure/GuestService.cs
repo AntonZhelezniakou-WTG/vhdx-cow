@@ -59,7 +59,7 @@ if ($null -eq $svc) {{ $null }} else {{
 		svc.Should().BeNull($"service '{name}' should have been removed");
 	}
 
-	private static string Esc(string s) => s.Replace("'", "''");
+	static string Esc(string s) => s.Replace("'", "''");
 }
 
 /// <summary>Subset of Win32_Service we care about in tests.</summary>

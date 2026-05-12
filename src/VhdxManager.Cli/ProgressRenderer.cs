@@ -21,7 +21,7 @@ namespace VhdxManager.Cli;
 /// suppressed and only the COMPLETED/FAILED lines are printed.
 /// </para>
 /// </summary>
-internal sealed class ProgressRenderer : IDisposable
+sealed class ProgressRenderer : IDisposable
 {
 	// Reuse Spectre.Console's canonical Dots spinner frames + interval rather than
 	// hard-coding our own braille array. The animation is identical — we just stop
@@ -38,7 +38,7 @@ internal sealed class ProgressRenderer : IDisposable
 	const string HideCursor = "\x1b[?25l";
 	const string ShowCursor = "\x1b[?25h";
 
-	readonly bool isInteractive;
+	readonly bool isInteractive = !Console.IsOutputRedirected;
 	readonly Lock @lock = new();
 
 	Timer? spinnerTimer;
@@ -46,11 +46,6 @@ internal sealed class ProgressRenderer : IDisposable
 	string currentDetail = "";
 	int frameIndex;
 	bool cursorHidden;
-
-	public ProgressRenderer()
-	{
-		isInteractive = !Console.IsOutputRedirected;
-	}
 
 	public void Handle(ProgressEvent ev)
 	{
@@ -128,7 +123,8 @@ internal sealed class ProgressRenderer : IDisposable
 
 	void HideCursorIfNeededLocked()
 	{
-		if (!isInteractive || cursorHidden) return;
+		if (!isInteractive || cursorHidden)
+			return;
 		Console.Write(HideCursor);
 		cursorHidden = true;
 	}

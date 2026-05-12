@@ -37,7 +37,7 @@ public static class MsiInstaller
 		string guestMsiPath, CancellationToken ct = default)
 		=> RunMsiExecAsync(s, $"/fp \"{guestMsiPath}\"", "repair", ct);
 
-	private static async Task<MsiResult> RunMsiExecAsync(GuestSession s,
+	static async Task<MsiResult> RunMsiExecAsync(GuestSession s,
 		string operation, string verb, CancellationToken ct)
 	{
 		// We can't use GuestProcess.RunAsync directly because msiexec's

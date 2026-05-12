@@ -19,8 +19,8 @@ public sealed class Installer_Tests : E2EFixtureBase
 {
 	protected override string CheckpointName => "pre-install-clean";
 
-	private MsiArtefact _msi = null!;
-	private MsiResult   _installResult = null!;
+	MsiArtefact _msi = null!;
+	MsiResult   _installResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{

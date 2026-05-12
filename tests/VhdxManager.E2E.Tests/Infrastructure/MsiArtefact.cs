@@ -20,7 +20,7 @@ public sealed class MsiArtefact
 	/// <summary>First 8 hex chars of <see cref="Sha256"/>. Used in checkpoint names.</summary>
 	public string Sha8     { get; }
 
-	private MsiArtefact(string path, string sha256)
+	MsiArtefact(string path, string sha256)
 	{
 		Path     = path;
 		FileName = System.IO.Path.GetFileName(path);
@@ -48,7 +48,7 @@ public sealed class MsiArtefact
 		return new MsiArtefact(path!, ComputeSha256(path!));
 	}
 
-	private static string? ResolveMsiPath(string repoRoot)
+	static string? ResolveMsiPath(string repoRoot)
 	{
 		// Env var wins so a developer can `setx VHDXMANAGER_E2E_MSI ...` and
 		// point the suite at an out-of-tree MSI (signed artifact from a PR
@@ -70,7 +70,7 @@ public sealed class MsiArtefact
 			.FirstOrDefault()?.FullName;
 	}
 
-	private static string ComputeSha256(string path)
+	static string ComputeSha256(string path)
 	{
 		using var sha = SHA256.Create();
 		using var fs  = File.OpenRead(path);

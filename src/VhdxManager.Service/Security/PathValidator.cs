@@ -24,9 +24,7 @@ public sealed class PathValidator(IConfiguration configuration, ILogger<PathVali
 		= ExpandEnvVars(configuration.GetSection("VhdxManager:AllowedConvertSourcePaths").Get<string[]>());
 
 	static string[] ExpandEnvVars(string[]? values)
-		=> values is null
-			? []
-			: [.. values.Select(Environment.ExpandEnvironmentVariables)];
+		=> values is null ? [] : [.. values.Select(Environment.ExpandEnvironmentVariables)];
 
 	public bool ValidateParentPath(string path, out string error)
 		=> ValidateAgainstAllowList(path, allowedParentPaths, "parent VHDX", out error);

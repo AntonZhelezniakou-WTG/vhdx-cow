@@ -132,7 +132,7 @@ public static class BumpedMsiBuilder
 		return new BumpedMsi(baseVersion, bumpedVersion, stagedMsi);
 	}
 
-	private static string ParseVersionFromFileName(string fileName)
+	static string ParseVersionFromFileName(string fileName)
 	{
 		// VhdxManager-0.2.0.msi → 0.2.0
 		const string prefix = "VhdxManager-";
@@ -146,7 +146,7 @@ public static class BumpedMsiBuilder
 		return fileName.Substring(prefix.Length, fileName.Length - prefix.Length - suffix.Length);
 	}
 
-	private static string BumpPatch(string version)
+	static string BumpPatch(string version)
 	{
 		var parts = version.Split('.');
 		if (parts.Length < 3)
@@ -163,7 +163,7 @@ public static class BumpedMsiBuilder
 		return string.Join('.', parts);
 	}
 
-	private static async Task RunDotnetAsync(string workingDir, string[] args, CancellationToken ct)
+	static async Task RunDotnetAsync(string workingDir, string[] args, CancellationToken ct)
 	{
 		// Use ArgumentList rather than the single-string Arguments to avoid the
 		// well-known trailing-backslash escaping pitfall: a value like
@@ -205,7 +205,7 @@ public static class BumpedMsiBuilder
 		}
 	}
 
-	private static string TailLines(string text, int count)
+	static string TailLines(string text, int count)
 	{
 		var lines = text.Split('\n');
 		var start = Math.Max(0, lines.Length - count);
