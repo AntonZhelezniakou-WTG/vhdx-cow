@@ -59,7 +59,6 @@ public sealed class BasicVerbs_Tests : InstalledFixtureBase
 		r.Succeeded.Should().BeTrue();
 		foreach (var verb in (string[])[
 				"ping",
-				"init",
 				"reset",
 				"cleanup",
 				"status",

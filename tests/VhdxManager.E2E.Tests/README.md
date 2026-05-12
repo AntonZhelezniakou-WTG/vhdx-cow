@@ -65,11 +65,11 @@ WiX component layout — keep in sync when the installer changes):
 |---|---|---|---|
 | `BasicVerbs_Tests` (Order 10) | `ping`, `list` (empty), `--help`, `--version` | `installed-clean@<sha8>` | ~1 min |
 | `StandaloneVhdx_Tests` (Order 20) | `create`, `list`, `unmount`, `mount`, `delete` | `installed-clean@<sha8>` | ~2 min |
-| `Differencing_Tests` (Order 30) | `create` (parent), `init`, `status`, `reset`, `cleanup`, `create --parent` | `installed-clean@<sha8>` | ~3 min |
+| `Differencing_Tests` (Order 30) | `create` (parent), `create --parent`, `status`, `reset`, `cleanup` | `installed-clean@<sha8>` | ~3 min |
 | `Convert_Tests` (Order 40) | `convert`, `list` | `installed-clean@<sha8>` | ~2 min |
 | `Logs_Tests` (Order 50) | `logs --since install`, `logs --output`, `logs --since 1h` | `installed-clean@<sha8>` | ~1 min |
 | `DefenderExclusion_Tests` (Order 60) | `create --add-defender-exclusion true`, `Get-MpPreference` assertion | `installed-clean@<sha8>` | ~1 min |
-| `Publish_Tests` (Order 70) | `create` (parent), `init` ×2 (child + overlay), `publish`, marker propagation | `installed-clean@<sha8>` | ~3 min |
+| `Publish_Tests` (Order 70) | `create` (parent), `create --parent` ×2 (child + overlay), `publish`, marker propagation | `installed-clean@<sha8>` | ~3 min |
 
 Each scenario fixture boots the VM once (~30 s) and runs its verb sequence
 in `[Order(N)]` — sharing one boot across related steps. Per-verb-per-fixture
@@ -148,7 +148,7 @@ Documented here so the gap is visible at code-review time:
   `DeleteCommand` (and `CleanupCommand`) and assert the path is gone after
   deletion. `DefenderExclusion_Tests` today covers only the *add* half.
 * **`status` `Attached: True`** — empirically the service reports
-  `Attached: False` for managed children once `init` returns (the OpenVirt
+  `Attached: False` for managed children once `create --parent` returns (the OpenVirt
   handle is closed; the OS volume mount survives independently). This
   may be a CLI/service contract bug — the line was previously expected
   to report True. Worth a follow-up with the service team; for now the

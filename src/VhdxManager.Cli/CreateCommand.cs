@@ -206,8 +206,8 @@ static class CreateCommand
 	}
 
 	/// <summary>
-	/// `vhdx create --parent …` branch: create a differencing child VHDX via
-	/// the same RPC as `vhdx init`. Per design, --mount is mandatory in this
+	/// `vhdx create --parent …` branch: create a differencing child VHDX.
+	/// Per design, --mount is mandatory in this
 	/// branch (we do not silently substitute prompts) and every standalone-only
 	/// option is rejected up-front so the user gets a fast, explicit error
 	/// rather than seeing flags silently dropped on the floor.
