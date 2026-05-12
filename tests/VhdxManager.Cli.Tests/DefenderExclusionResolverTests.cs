@@ -64,17 +64,14 @@ public class DefenderExclusionResolverTests
 	}
 
 	[Test]
-	public async Task CliUnset_ServiceUnset_FallsThroughToPrompt_FailsInNonInteractive()
+	public async Task CliUnset_ServiceUnset_ReturnsFalse()
 	{
-		// Console.IsInputRedirected is true under the test runner, so InteractivePrompt
-		// throws InvalidOperationException with a clear message about missing input.
 		client.GetSettingsAsync(Arg.Any<CancellationToken>())
 			.Returns(new GetSettingsReply { HasDefaultAddDefenderExclusion = false });
 
-		var act = async () => await DefenderExclusionResolver.ResolveAsync(
+		var result = await DefenderExclusionResolver.ResolveAsync(
 			cliValue: null, client, CancellationToken.None);
 
-		await act.Should().ThrowAsync<InvalidOperationException>()
-			.WithMessage("*non-interactive*");
+		result.Should().BeFalse();
 	}
 }
