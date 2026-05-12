@@ -129,22 +129,23 @@ The service rejects any request whose paths fall outside these allow-lists.
 ### 4. Use the CLI
 
 ```powershell
-# Check connectivity
+# Check service connectivity
 vhmgr ping
 
 # Create a standalone VHDX, format it, and mount it to a folder
 vhmgr create --path D:\VhdxDisks\data.vhdx --size 50G --label data `
              --mount D:\MountPoints\data
 
-# Create a differencing child off a parent VHDX and mount it
-vhmgr init --parent D:\VhdxDisks\Parents\base.vhdx `
-           --child  D:\VhdxDisks\Children\snap1.vhdx `
-           --mount  D:\MountPoints\snap1
-
 # `create --parent` is equivalent to `init`
 vhmgr create --parent D:\VhdxDisks\Parents\base.vhdx `
              --path   D:\VhdxDisks\Children\snap2.vhdx `
              --mount  D:\MountPoints\snap2
+
+# Convert an existing folder into a VHDX-backed folder
+vhmgr convert --folder D:\Data --vhdx D:\VhdxDisks\data.vhdx --size 100G
+
+# Unmount + detach + delete the file
+vhmgr delete D:\VhdxDisks\data.vhdx
 
 # List all active mounts
 vhmgr list
@@ -166,12 +167,6 @@ vhmgr mount --path D:\VhdxDisks\data.vhdx --mount D:\MountPoints\data
 
 # Unmount + detach, keeping the file on disk
 vhmgr unmount --path D:\VhdxDisks\data.vhdx
-
-# Unmount + detach + delete the file
-vhmgr delete D:\VhdxDisks\data.vhdx
-
-# Convert an existing folder into a VHDX-backed folder
-vhmgr convert --folder D:\Data --vhdx D:\VhdxDisks\data.vhdx --size 100G
 ```
 
 #### Global options
