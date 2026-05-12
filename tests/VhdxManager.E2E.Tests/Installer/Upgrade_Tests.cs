@@ -91,9 +91,7 @@ public sealed class Upgrade_Tests : InstalledFixtureBase
 		// The CLI was built with /p:Version=<bumped>, so the EXE's FileVersion
 		// is the bumped version padded out to 4 components ("0.2.1" → "0.2.1.0").
 		var fileVersion = await Guest.InvokeJsonAsync<string>("""
-
 			(Get-Item 'C:\Program Files\VhdxManager\Cli\vhmgr.exe').VersionInfo.FileVersion
-
 			""");
 		fileVersion.Should().StartWith(bumpedMsi.BumpedVersion,
 			$"vhmgr.exe FileVersion should match the upgraded version " +
@@ -107,9 +105,7 @@ public sealed class Upgrade_Tests : InstalledFixtureBase
 		if (!upgradeResult.Succeeded) Assert.Inconclusive("Upgrade step failed.");
 
 		var fileVersion = await Guest.InvokeJsonAsync<string>("""
-
 			(Get-Item 'C:\Program Files\VhdxManager\Service\VhdxManager.Service.exe').VersionInfo.FileVersion
-
 			""");
 		fileVersion.Should().StartWith(bumpedMsi.BumpedVersion,
 			$"VhdxManager.Service.exe FileVersion should match the upgraded version " +
@@ -162,14 +158,12 @@ public sealed class Upgrade_Tests : InstalledFixtureBase
 		// would indicate the upgrade table didn't match the prior install
 		// (typically: UpgradeCode mismatch, or Version comparison broken).
 		var count = await Guest.InvokeJsonAsync<int>("""
-
 			$uninstallPaths = @(
 			    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
 			    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
 			)
 			@(Get-ItemProperty -Path $uninstallPaths -ErrorAction SilentlyContinue |
 			  Where-Object { $_.DisplayName -like 'VHDX Manager*' }).Count
-
 			""");
 		count.Should().Be(1,
 			"after MajorUpgrade exactly one VHDX Manager entry should remain in Add/Remove Programs; " +

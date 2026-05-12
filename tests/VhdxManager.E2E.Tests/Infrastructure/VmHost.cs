@@ -62,7 +62,6 @@ public sealed class VmHost(string vmName, PowerShellRunner ps)
 		// dot-source it via PowerShellRunner so the function is in scope.
 		var minutes = Math.Max(1, (int)Math.Ceiling(timeout.TotalMinutes));
 		var script = $"""
-
 			$pw = ConvertTo-SecureString '{Escape(guestPassword)}' -AsPlainText -Force
 			$cred = New-Object System.Management.Automation.PSCredential('{vmName}\{Escape(guestUser)}', $pw)
 			Wait-VmReady -VmName '{vmName}' -Credential $cred -TimeoutMinutes {minutes} | Out-Null

@@ -45,7 +45,6 @@ public static class GuestProcess
 			: $"-WorkingDirectory '{Esc(workingDir)}'";
 
 		var script = $$"""
-
 			$stdoutFile = Join-Path $env:TEMP ('vhmgr-stdout-' + [Guid]::NewGuid().ToString('N') + '.log')
 			$stderrFile = Join-Path $env:TEMP ('vhmgr-stderr-' + [Guid]::NewGuid().ToString('N') + '.log')
 			try {

@@ -19,7 +19,6 @@ public static class GuestService
 		// "NT AUTHORITY\NetworkService" / etc.) and StartMode ("Auto" /
 		// "Manual" / "Disabled") aren't on the Get-Service object.
 		=> s.InvokeJsonAsync<ServiceInfo?>($$"""
-
 			$svc = Get-CimInstance -ClassName Win32_Service -Filter "Name='{{Esc(name)}}'" -ErrorAction SilentlyContinue
 			if ($null -eq $svc) { $null } else {
 			    [pscustomobject]@{

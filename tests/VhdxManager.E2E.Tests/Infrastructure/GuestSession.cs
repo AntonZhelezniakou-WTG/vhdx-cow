@@ -47,7 +47,6 @@ public sealed class GuestSession
 	public Task CopyToGuestAsync(string hostPath, string guestPath, CancellationToken ct = default)
 	{
 		var script = $$"""
-
 			$session = New-PSSession -VMName '{{_vmName}}' -Credential $__guestCred
 			try {
 			    Copy-Item -ToSession $session -Path '{{Esc(hostPath)}}' -Destination '{{Esc(guestPath)}}' -Recurse -Force
@@ -78,7 +77,6 @@ public sealed class GuestSession
 		sb.AppendLine(scriptBlock);
 		sb.AppendLine("}");
 		sb.AppendLine("""
-
 			function __Strip-PSRemoting($obj) {
 			    if ($null -eq $obj) { return $null }
 			    if ($obj -is [System.Collections.IEnumerable] -and $obj -isnot [string]) {

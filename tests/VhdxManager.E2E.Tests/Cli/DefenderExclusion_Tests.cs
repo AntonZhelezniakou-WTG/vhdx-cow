@@ -37,11 +37,9 @@ public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 	protected override async Task OnGuestReadyAsync()
 	{
 		await Guest.InvokeVoidAsync($"""
-
 			Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
 			New-Item -ItemType Directory -Path '{TestDir}'  -Force | Out-Null
 			New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
-
 			""");
 
 		// Probe whether Windows Defender Management cmdlets are available and
@@ -50,7 +48,6 @@ public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 		// so every test in the fixture can Assert.Inconclusive uniformly rather
 		// than producing confusing errors about missing cmdlets.
 		defenderAvailable = await Guest.InvokeJsonAsync<bool>("""
-
 			$svc = Get-Service -Name WinDefend -ErrorAction SilentlyContinue
 			if ($null -eq $svc -or $svc.Status -ne 'Running') {
 			    $false
@@ -62,7 +59,6 @@ public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 			        $false
 			    }
 			}
-
 			""");
 	}
 
@@ -107,10 +103,8 @@ public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 		// case-insensitive, which handles any capitalisation drift in the drive
 		// letter or directory separators.
 		var found = await Guest.InvokeJsonAsync<bool>("""
-
 			$pref = Get-MpPreference -ErrorAction Stop
 			$pref.ExclusionPath -icontains 'C:\E2E-def\test.vhdx'
-
 			""");
 
 		found.Should().BeTrue(

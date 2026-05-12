@@ -28,11 +28,9 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 	protected override async Task OnGuestReadyAsync()
 	{
 		await Guest.InvokeVoidAsync($"""
-
 			Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
 			New-Item -ItemType Directory -Path '{TestDir}' -Force | Out-Null
 			New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
-
 			""");
 
 		// Create the parent VHDX up front (used by every test below). We

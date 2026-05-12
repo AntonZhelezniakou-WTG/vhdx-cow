@@ -72,10 +72,8 @@ public sealed class Uninstall_Tests : InstalledFixtureBase
 		// contains the VhdxManager\\Cli directory, independently of whether
 		// Get-Command resolves the (now-deleted) binary.
 		var pathContainsCli = await Guest.InvokeJsonAsync<bool>("""
-
 			$mp = [System.Environment]::GetEnvironmentVariable('PATH', 'Machine')
 			$null -ne $mp -and $mp -like '*VhdxManager\Cli*'
-
 			""");
 
 		pathContainsCli.Should().BeFalse(
