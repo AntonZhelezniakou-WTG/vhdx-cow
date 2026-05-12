@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option csharp_namespace = "VhdxManager.Contracts";
 
-package vhdxcow;
+package vhdx;
 
 // Service for managing VHDX virtual disks (create, attach, mount, merge).
 // Runs as a Windows Service with admin privileges.
