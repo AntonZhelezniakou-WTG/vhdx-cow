@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Text.Json;
 using NUnit.Framework;
 
@@ -72,12 +70,11 @@ public sealed class E2EConfig
 			throw; // unreachable — Assert.Ignore unwinds
 		}
 
-		if (string.IsNullOrWhiteSpace(creds.VmName) ||
-		    string.IsNullOrWhiteSpace(creds.Username) ||
-		    string.IsNullOrWhiteSpace(creds.Password))
+		if (string.IsNullOrWhiteSpace(creds.VmName)
+			|| string.IsNullOrWhiteSpace(creds.Username)
+			|| string.IsNullOrWhiteSpace(creds.Password))
 		{
-			Assert.Ignore($"{credsPath} is missing required fields (VmName/Username/Password). " +
-				"Re-run Bootstrap-VM.ps1 to regenerate.");
+			Assert.Ignore($"{credsPath} is missing required fields (VmName/Username/Password). Re-run Bootstrap-VM.ps1 to regenerate.");
 		}
 
 		return new E2EConfig(repoRoot!, helpers, creds.VmName!, creds.Username!, creds.Password!);

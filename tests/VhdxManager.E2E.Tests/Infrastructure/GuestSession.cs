@@ -1,7 +1,4 @@
-using System;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace VhdxManager.E2E.Tests.Infrastructure;
 
@@ -49,13 +46,15 @@ public sealed class GuestSession
 	/// </summary>
 	public Task CopyToGuestAsync(string hostPath, string guestPath, CancellationToken ct = default)
 	{
-		var script = $@"
-$session = New-PSSession -VMName '{_vmName}' -Credential $__guestCred
-try {{
-    Copy-Item -ToSession $session -Path '{Esc(hostPath)}' -Destination '{Esc(guestPath)}' -Recurse -Force
-}} finally {{
-    Remove-PSSession $session
-}}";
+		var script = $$"""
+
+			$session = New-PSSession -VMName '{{_vmName}}' -Credential $__guestCred
+			try {
+			    Copy-Item -ToSession $session -Path '{{Esc(hostPath)}}' -Destination '{{Esc(guestPath)}}' -Recurse -Force
+			} finally {
+			    Remove-PSSession $session
+			}
+			""";
 		return _ps.RunVoidAsync(WrapWithCred(script), ct);
 	}
 
@@ -78,26 +77,28 @@ try {{
 		sb.AppendLine($"$__guestRaw = Invoke-Command -VMName '{_vmName}' -Credential $__guestCred -ScriptBlock {{");
 		sb.AppendLine(scriptBlock);
 		sb.AppendLine("}");
-		sb.AppendLine(@"
-function __Strip-PSRemoting($obj) {
-    if ($null -eq $obj) { return $null }
-    if ($obj -is [System.Collections.IEnumerable] -and $obj -isnot [string]) {
-        return ,@($obj | ForEach-Object { __Strip-PSRemoting $_ })
-    }
-    if ($obj -is [System.Management.Automation.PSObject]) {
-        foreach ($name in 'PSComputerName','RunspaceId','PSShowComputerName','PSSourceJobInstanceId') {
-            if ($obj.PSObject.Properties[$name]) {
-                $obj.PSObject.Properties.Remove($name)
-            }
-        }
-        $base = $obj.PSObject.BaseObject
-        # If the wrapper just hid a primitive, return the primitive — otherwise
-        # leave the (now-cleaned) PSObject alone so it serializes as an object.
-        if ($base -is [string] -or $base -is [ValueType]) { return $base }
-    }
-    return $obj
-}
-__Strip-PSRemoting $__guestRaw");
+		sb.AppendLine("""
+
+			function __Strip-PSRemoting($obj) {
+			    if ($null -eq $obj) { return $null }
+			    if ($obj -is [System.Collections.IEnumerable] -and $obj -isnot [string]) {
+			        return ,@($obj | ForEach-Object { __Strip-PSRemoting $_ })
+			    }
+			    if ($obj -is [System.Management.Automation.PSObject]) {
+			        foreach ($name in 'PSComputerName','RunspaceId','PSShowComputerName','PSSourceJobInstanceId') {
+			            if ($obj.PSObject.Properties[$name]) {
+			                $obj.PSObject.Properties.Remove($name)
+			            }
+			        }
+			        $base = $obj.PSObject.BaseObject
+			        # If the wrapper just hid a primitive, return the primitive — otherwise
+			        # leave the (now-cleaned) PSObject alone so it serializes as an object.
+			        if ($base -is [string] -or $base -is [ValueType]) { return $base }
+			    }
+			    return $obj
+			}
+			__Strip-PSRemoting $__guestRaw
+			""");
 		return sb.ToString();
 	}
 
@@ -109,9 +110,10 @@ __Strip-PSRemoting $__guestRaw");
 		return sb.ToString();
 	}
 
-	string CredPrelude()
-		=> $@"$__guestPw = ConvertTo-SecureString '{Esc(_password)}' -AsPlainText -Force
-$__guestCred = New-Object System.Management.Automation.PSCredential('{_vmName}\{Esc(_user)}', $__guestPw)";
+	string CredPrelude() => $"""
+		$__guestPw = ConvertTo-SecureString '{Esc(_password)}' -AsPlainText -Force
+		$__guestCred = New-Object System.Management.Automation.PSCredential('{_vmName}\{Esc(_user)}', $__guestPw)
+		""";
 
 	static string Esc(string s) => s.Replace("'", "''");
 }

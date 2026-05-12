@@ -1,4 +1,3 @@
-using VhdxManager.Cli;
 using VhdxManager.Client;
 using VhdxManager.Contracts;
 

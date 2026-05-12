@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -24,29 +23,29 @@ namespace VhdxManager.E2E.Tests.Installer;
 [Order(3)]
 public sealed class Reinstall_Tests : InstalledFixtureBase
 {
-	MsiResult _reinstallResult = null!;
+	MsiResult reinstallResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{
 		// The MSI is already staged at C:\Setup\ by InstalledCleanCheckpointFixture.
 		// Run msiexec /i again over the already-installed product — no copy needed.
 		var guestMsiPath = InstalledCheckpoint.GuestMsiPath(Msi);
-		_reinstallResult = await MsiInstaller.InstallSilentAsync(Guest, guestMsiPath);
+		reinstallResult = await MsiInstaller.InstallSilentAsync(Guest, guestMsiPath);
 	}
 
 	[Test]
 	public void Reinstall_Over_Existing_Install_Exits_Zero()
 	{
-		_reinstallResult.Succeeded.Should().BeTrue(
+		reinstallResult.Succeeded.Should().BeTrue(
 			$"msiexec /i over an already-installed product returned exit code " +
-			$"{_reinstallResult.ExitCode} (expected 0). " +
-			$"Log: {_reinstallResult.LogPath}\nTail:\n{_reinstallResult.LogTail}");
+			$"{reinstallResult.ExitCode} (expected 0). " +
+			$"Log: {reinstallResult.LogPath}\nTail:\n{reinstallResult.LogTail}");
 	}
 
 	[Test]
 	public async Task Service_Still_Running_After_Reinstall()
 	{
-		if (!_reinstallResult.Succeeded) Assert.Inconclusive("Reinstall step failed.");
+		if (!reinstallResult.Succeeded) Assert.Inconclusive("Reinstall step failed.");
 		// ServiceControl Stop="both" stops the service during reinstall;
 		// Start="install" fires a restart. We assert the service ended up Running.
 		await GuestService.AssertRunningAsync(Guest, "VhdxManagerService");
@@ -55,7 +54,7 @@ public sealed class Reinstall_Tests : InstalledFixtureBase
 	[Test]
 	public async Task Key_Files_Present_After_Reinstall()
 	{
-		if (!_reinstallResult.Succeeded) Assert.Inconclusive("Reinstall step failed.");
+		if (!reinstallResult.Succeeded) Assert.Inconclusive("Reinstall step failed.");
 		await GuestFs.AssertFileExistsAsync(Guest,
 			@"C:\Program Files\VhdxManager\Service\VhdxManager.Service.exe");
 		await GuestFs.AssertFileExistsAsync(Guest,
@@ -65,7 +64,7 @@ public sealed class Reinstall_Tests : InstalledFixtureBase
 	[Test]
 	public async Task Cli_Still_On_Path_After_Reinstall()
 	{
-		if (!_reinstallResult.Succeeded) Assert.Inconclusive("Reinstall step failed.");
+		if (!reinstallResult.Succeeded) Assert.Inconclusive("Reinstall step failed.");
 		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhmgr.exe");
 		onPath.Should().BeTrue(
 			"reinstall must leave the CLI directory on the machine PATH");

@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -58,9 +57,21 @@ public sealed class BasicVerbs_Tests : InstalledFixtureBase
 		var r = await Vhmgr.RunAsync(Guest, "--help");
 
 		r.Succeeded.Should().BeTrue();
-		foreach (var verb in new[] {
-			"ping", "init", "reset", "cleanup", "status", "publish",
-			"list", "logs", "create", "mount", "unmount", "delete", "convert" })
+		foreach (var verb in (string[])[
+				"ping",
+				"init",
+				"reset",
+				"cleanup",
+				"status",
+				"publish",
+				"list",
+				"logs",
+				"create",
+				"mount",
+				"unmount",
+				"delete",
+				"convert",
+			])
 		{
 			r.StdoutText.Should().Contain(verb,
 				$"`vhmgr --help` is expected to document the '{verb}' command");

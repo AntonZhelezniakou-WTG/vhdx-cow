@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -19,26 +18,25 @@ public sealed class Installer_Tests : E2EFixtureBase
 {
 	protected override string CheckpointName => "pre-install-clean";
 
-	MsiArtefact _msi = null!;
-	MsiResult   _installResult = null!;
+	MsiArtefact msi = null!;
+	MsiResult installResult = null!;
 
 	protected override async Task OnGuestReadyAsync()
 	{
-		_msi = MsiArtefact.LoadOrSkip(Config.RepoRoot);
+		msi = MsiArtefact.LoadOrSkip(Config.RepoRoot);
 
 		await Guest.InvokeVoidAsync(@"New-Item -Path 'C:\Setup' -ItemType Directory -Force | Out-Null");
-		var guestMsiPath = InstalledCheckpoint.GuestMsiPath(_msi);
-		await Guest.CopyToGuestAsync(_msi.Path, guestMsiPath);
+		var guestMsiPath = InstalledCheckpoint.GuestMsiPath(msi);
+		await Guest.CopyToGuestAsync(msi.Path, guestMsiPath);
 
-		_installResult = await MsiInstaller.InstallSilentAsync(Guest, guestMsiPath);
+		installResult = await MsiInstaller.InstallSilentAsync(Guest, guestMsiPath);
 	}
 
 	[Test]
 	public void Msiexec_SilentInstall_ExitsZero()
 	{
-		_installResult.Succeeded.Should().BeTrue(
-			$"msiexec /i {_msi.FileName} returned {_installResult.ExitCode}. " +
-			$"Guest log: {_installResult.LogPath}\nTail:\n{_installResult.LogTail}");
+		installResult.Succeeded.Should().BeTrue(
+			$"msiexec /i {msi.FileName} returned {installResult.ExitCode}. Guest log: {installResult.LogPath}\nTail:\n{installResult.LogTail}");
 	}
 
 	[Test]
@@ -46,7 +44,7 @@ public sealed class Installer_Tests : E2EFixtureBase
 	{
 		// Skip the sub-assertions if the install itself failed — otherwise
 		// every assertion in the fixture parrots the same root-cause failure.
-		if (!_installResult.Succeeded) Assert.Inconclusive("MSI install failed.");
+		if (!installResult.Succeeded) Assert.Inconclusive("MSI install failed.");
 
 		await GuestService.AssertRunningAsync(Guest, "VhdxManagerService");
 		await GuestService.AssertStartModeAsync(Guest, "VhdxManagerService", "Auto");
@@ -56,7 +54,7 @@ public sealed class Installer_Tests : E2EFixtureBase
 	[Test]
 	public async Task Files_Present_At_Expected_Paths()
 	{
-		if (!_installResult.Succeeded) Assert.Inconclusive("MSI install failed.");
+		if (!installResult.Succeeded) Assert.Inconclusive("MSI install failed.");
 
 		// Service binaries + their config (appsettings.json ships *with* the
 		// service, not in ProgramData — ProgramData holds runtime artefacts).
@@ -72,7 +70,8 @@ public sealed class Installer_Tests : E2EFixtureBase
 	[Test]
 	public async Task Cli_On_Machine_Path_And_Ping_Succeeds()
 	{
-		if (!_installResult.Succeeded) Assert.Inconclusive("MSI install failed.");
+		if (!installResult.Succeeded)
+			Assert.Inconclusive("MSI install failed.");
 
 		// PATH was just amended by msiexec; a fresh PSSession picks up the
 		// updated machine PATH (PSSession spawns a new process which reads

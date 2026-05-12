@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -20,17 +19,17 @@ public sealed class Convert_Tests : InstalledFixtureBase
 	const string VhdxPath    = @"C:\E2E-conv\src.vhdx";
 	const string MarkerFile  = @"C:\E2E-conv\src\hello.txt";
 
-	bool _convertSucceeded;
+	bool convertSucceeded;
 
 	protected override async Task OnGuestReadyAsync()
 	{
 		// Build a small source folder with one tagged file so we can prove
 		// the robocopy step preserved content end-to-end.
-		await Guest.InvokeVoidAsync($@"
-Remove-Item -LiteralPath 'C:\E2E-conv' -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path '{SourceDir}' -Force | Out-Null
-Set-Content -Path '{MarkerFile}' -Value 'preserve-me' -Encoding utf8 -Force
-");
+		await Guest.InvokeVoidAsync($"""
+			Remove-Item -LiteralPath 'C:\E2E-conv' -Recurse -Force -ErrorAction SilentlyContinue
+			New-Item -ItemType Directory -Path '{SourceDir}' -Force | Out-Null
+			Set-Content -Path '{MarkerFile}' -Value 'preserve-me' -Encoding utf8 -Force
+			""");
 	}
 
 	[Test, Order(1)]
@@ -49,7 +48,7 @@ Set-Content -Path '{MarkerFile}' -Value 'preserve-me' -Encoding utf8 -Force
 		r.Succeeded.Should().BeTrue(
 			$"`vhmgr convert` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
 
-		_convertSucceeded = true;
+		convertSucceeded = true;
 
 		// VHDX file should exist on disk at the location we asked for…
 		await GuestFs.AssertFileExistsAsync(Guest, VhdxPath);
@@ -58,7 +57,7 @@ Set-Content -Path '{MarkerFile}' -Value 'preserve-me' -Encoding utf8 -Force
 	[Test, Order(2)]
 	public async Task Original_Path_Is_Now_The_Vhdx_Mount()
 	{
-		if (!_convertSucceeded) Assert.Inconclusive("convert step failed; nothing to inspect");
+		if (!convertSucceeded) Assert.Inconclusive("convert step failed; nothing to inspect");
 
 		// After convert, the original folder path is now the mount point
 		// for the new VHDX, and the marker file we wrote pre-convert
@@ -67,14 +66,13 @@ Set-Content -Path '{MarkerFile}' -Value 'preserve-me' -Encoding utf8 -Force
 
 		var content = await GuestFs.ReadAllTextAsync(Guest, MarkerFile);
 		content.Should().Contain("preserve-me",
-			"convert should robocopy the source folder's contents into the new VHDX " +
-			"and remount it at the original path — the marker should still be there");
+			"convert should robocopy the source folder's contents into the new VHDX and remount it at the original path — the marker should still be there");
 	}
 
 	[Test, Order(3)]
 	public async Task List_Shows_The_Converted_Mount()
 	{
-		if (!_convertSucceeded) Assert.Inconclusive("convert step failed; nothing to inspect");
+		if (!convertSucceeded) Assert.Inconclusive("convert step failed; nothing to inspect");
 
 		var r = await Vhmgr.RunAsync(Guest, "list");
 		r.Succeeded.Should().BeTrue();

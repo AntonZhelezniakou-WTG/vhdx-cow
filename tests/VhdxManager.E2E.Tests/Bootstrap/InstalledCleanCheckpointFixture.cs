@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
 

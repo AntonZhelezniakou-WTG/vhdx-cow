@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -33,10 +32,12 @@ public sealed class Logs_Tests : InstalledFixtureBase
 	public async Task Logs_Writes_To_File_When_Output_Specified()
 	{
 		const string logDest = @"C:\E2E\events.txt";
-		await Guest.InvokeVoidAsync(@"
-New-Item -ItemType Directory -Path 'C:\E2E' -Force | Out-Null
-Remove-Item -LiteralPath 'C:\E2E\events.txt' -Force -ErrorAction SilentlyContinue
-");
+		await Guest.InvokeVoidAsync("""
+
+			New-Item -ItemType Directory -Path 'C:\E2E' -Force | Out-Null
+			Remove-Item -LiteralPath 'C:\E2E\events.txt' -Force -ErrorAction SilentlyContinue
+
+			""");
 
 		var r = await Vhmgr.RunAsync(Guest, $"logs --since install --output \"{logDest}\"");
 

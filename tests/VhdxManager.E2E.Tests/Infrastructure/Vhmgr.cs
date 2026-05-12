@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace VhdxManager.E2E.Tests.Infrastructure;
 
 /// <summary>
@@ -15,7 +12,9 @@ public static class Vhmgr
 {
 	public const string ExePath = @"C:\Program Files\VhdxManager\Cli\vhmgr.exe";
 
-	public static Task<ProcResult> RunAsync(GuestSession s, string verbAndArgs,
+	public static Task<ProcResult> RunAsync(
+		GuestSession s,
+		string verbAndArgs,
 		CancellationToken ct = default)
 		=> GuestProcess.RunAsync(s, ExePath, verbAndArgs, workingDir: @"C:\", ct: ct);
 }

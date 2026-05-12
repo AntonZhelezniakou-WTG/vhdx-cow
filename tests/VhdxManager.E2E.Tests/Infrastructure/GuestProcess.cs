@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace VhdxManager.E2E.Tests.Infrastructure;
 
 /// <summary>
@@ -32,8 +29,12 @@ public static class GuestProcess
 	/// Optional <c>-WorkingDirectory</c>. Default leaves it as wherever
 	/// PowerShell decided to drop the user (usually <c>C:\Users\&lt;user&gt;</c>).
 	/// </param>
-	public static Task<ProcResult> RunAsync(GuestSession s, string exe, string args = "",
-		string? workingDir = null, CancellationToken ct = default)
+	public static Task<ProcResult> RunAsync(
+		GuestSession s,
+		string exe,
+		string args = "",
+		string? workingDir = null,
+		CancellationToken ct = default)
 	{
 		// Stream-redirect to unique temp files per call so concurrent users
 		// of the guest (not us, but conceivable) don't clobber each other.
@@ -43,22 +44,24 @@ public static class GuestProcess
 			? ""
 			: $"-WorkingDirectory '{Esc(workingDir)}'";
 
-		var script = $@"
-$stdoutFile = Join-Path $env:TEMP ('vhmgr-stdout-' + [Guid]::NewGuid().ToString('N') + '.log')
-$stderrFile = Join-Path $env:TEMP ('vhmgr-stderr-' + [Guid]::NewGuid().ToString('N') + '.log')
-try {{
-    $proc = Start-Process -FilePath '{Esc(exe)}' -ArgumentList '{Esc(args)}' {wdParam} `
-        -NoNewWindow -PassThru -Wait `
-        -RedirectStandardOutput $stdoutFile `
-        -RedirectStandardError  $stderrFile
-    [pscustomobject]@{{
-        ExitCode = [int]$proc.ExitCode
-        Stdout   = (Get-Content -LiteralPath $stdoutFile -Raw -ErrorAction SilentlyContinue) -as [string]
-        Stderr   = (Get-Content -LiteralPath $stderrFile -Raw -ErrorAction SilentlyContinue) -as [string]
-    }}
-}} finally {{
-    Remove-Item -LiteralPath $stdoutFile,$stderrFile -ErrorAction SilentlyContinue
-}}";
+		var script = $$"""
+
+			$stdoutFile = Join-Path $env:TEMP ('vhmgr-stdout-' + [Guid]::NewGuid().ToString('N') + '.log')
+			$stderrFile = Join-Path $env:TEMP ('vhmgr-stderr-' + [Guid]::NewGuid().ToString('N') + '.log')
+			try {
+			    $proc = Start-Process -FilePath '{{Esc(exe)}}' -ArgumentList '{{Esc(args)}}' {{wdParam}} `
+			        -NoNewWindow -PassThru -Wait `
+			        -RedirectStandardOutput $stdoutFile `
+			        -RedirectStandardError  $stderrFile
+			    [pscustomobject]@{
+			        ExitCode = [int]$proc.ExitCode
+			        Stdout   = (Get-Content -LiteralPath $stdoutFile -Raw -ErrorAction SilentlyContinue) -as [string]
+			        Stderr   = (Get-Content -LiteralPath $stderrFile -Raw -ErrorAction SilentlyContinue) -as [string]
+			    }
+			} finally {
+			    Remove-Item -LiteralPath $stdoutFile,$stderrFile -ErrorAction SilentlyContinue
+			}
+			""";
 		return s.InvokeJsonAsync<ProcResult>(script, ct);
 	}
 

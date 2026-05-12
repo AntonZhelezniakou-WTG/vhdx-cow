@@ -29,8 +29,8 @@ public class JsonStateStoreTests
 			.Build(),
 		NullLogger<JsonStateStore>.Instance);
 
-	static MountedDiskState MakeState(string child, string parent = @"C:\parent.vhdx") =>
-		new()
+	static MountedDiskState MakeState(string child, string parent = @"C:\parent.vhdx")
+		=> new()
 		{
 			ChildVhdxPath = child,
 			ParentVhdxPath = parent,

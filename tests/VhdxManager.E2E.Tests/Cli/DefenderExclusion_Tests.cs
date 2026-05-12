@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -33,41 +31,45 @@ public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 	const string VhdxPath  = @"C:\E2E-def\test.vhdx";
 	const string MountPath = @"C:\E2E-def\mount";
 
-	bool _defenderAvailable;
-	bool _createSucceeded;
+	bool defenderAvailable;
+	bool createSucceeded;
 
 	protected override async Task OnGuestReadyAsync()
 	{
-		await Guest.InvokeVoidAsync($@"
-Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path '{TestDir}'  -Force | Out-Null
-New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
-");
+		await Guest.InvokeVoidAsync($"""
+
+			Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
+			New-Item -ItemType Directory -Path '{TestDir}'  -Force | Out-Null
+			New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
+
+			""");
 
 		// Probe whether Windows Defender Management cmdlets are available and
 		// usable on this VM. On some Server LTSC SKUs WinDefend is stopped and
 		// Add-MpPreference fails with HRESULT 0x800106ba; we detect this once
 		// so every test in the fixture can Assert.Inconclusive uniformly rather
 		// than producing confusing errors about missing cmdlets.
-		_defenderAvailable = await Guest.InvokeJsonAsync<bool>(@"
-$svc = Get-Service -Name WinDefend -ErrorAction SilentlyContinue
-if ($null -eq $svc -or $svc.Status -ne 'Running') {
-    $false
-} else {
-    try {
-        $null = Get-MpPreference -ErrorAction Stop
-        $true
-    } catch {
-        $false
-    }
-}
-");
+		defenderAvailable = await Guest.InvokeJsonAsync<bool>("""
+
+			$svc = Get-Service -Name WinDefend -ErrorAction SilentlyContinue
+			if ($null -eq $svc -or $svc.Status -ne 'Running') {
+			    $false
+			} else {
+			    try {
+			        $null = Get-MpPreference -ErrorAction Stop
+			        $true
+			    } catch {
+			        $false
+			    }
+			}
+
+			""");
 	}
 
 	[Test, Order(1)]
 	public async Task Create_With_Defender_Exclusion_True_Exits_Zero()
 	{
-		if (!_defenderAvailable)
+		if (!defenderAvailable)
 			Assert.Inconclusive(
 				"Windows Defender is not active on this VM — " +
 				"start WinDefend (sc start WinDefend) and re-run to exercise the exclusion path");
@@ -86,18 +88,17 @@ if ($null -eq $svc -or $svc.Status -ne 'Running') {
 		// Mark Inconclusive so test 2 doesn't fail for the wrong reason.
 		if (r.StdoutText.Contains("Defender exclusion not added", StringComparison.OrdinalIgnoreCase))
 			Assert.Inconclusive(
-				"Defender exclusion was blocked by policy on this VM (create exited 0, " +
-				$"policy warning present). stdout: {r.StdoutText}");
+				$"Defender exclusion was blocked by policy on this VM (create exited 0, policy warning present). stdout: {r.StdoutText}");
 
-		_createSucceeded = true;
+		createSucceeded = true;
 	}
 
 	[Test, Order(2)]
 	public async Task Defender_ExclusionPath_Contains_Vhdx()
 	{
-		if (!_defenderAvailable)
+		if (!defenderAvailable)
 			Assert.Inconclusive("Windows Defender is not active on this VM");
-		if (!_createSucceeded)
+		if (!createSucceeded)
 			Assert.Inconclusive("create step did not succeed (or was inconclusive); nothing to inspect");
 
 		// DefenderExclusionManager.AddExclusionCore normalises the path via
@@ -105,15 +106,15 @@ if ($null -eq $svc -or $svc.Status -ne 'Running') {
 		// registered path is already fully-qualified. -icontains is
 		// case-insensitive, which handles any capitalisation drift in the drive
 		// letter or directory separators.
-		var found = await Guest.InvokeJsonAsync<bool>(@"
-$pref = Get-MpPreference -ErrorAction Stop
-$pref.ExclusionPath -icontains 'C:\E2E-def\test.vhdx'
-");
+		var found = await Guest.InvokeJsonAsync<bool>("""
+
+			$pref = Get-MpPreference -ErrorAction Stop
+			$pref.ExclusionPath -icontains 'C:\E2E-def\test.vhdx'
+
+			""");
 
 		found.Should().BeTrue(
-			$"`vhmgr create --add-defender-exclusion true` must add {VhdxPath} to " +
-			"Defender ExclusionPath via Add-MpPreference before returning. " +
-			"Check DefenderExclusionManager.AddExclusionCore in VhdxManager.Service " +
-			"if this assertion fails — the VHDX was created but the exclusion was not registered.");
+			$"`vhmgr create --add-defender-exclusion true` must add {VhdxPath} to Defender ExclusionPath via Add-MpPreference before returning. " +
+			"Check DefenderExclusionManager.AddExclusionCore in VhdxManager.Service if this assertion fails — the VHDX was created but the exclusion was not registered.");
 	}
 }

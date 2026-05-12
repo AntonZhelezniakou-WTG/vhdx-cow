@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace VhdxManager.E2E.Tests.Infrastructure;
@@ -55,17 +53,14 @@ public abstract class E2EFixtureBase
 	{
 		// Hard turn-off — the VM is going to be restored from a checkpoint
 		// next time anyway, so we don't owe it a graceful shutdown.
-		if (Vm is not null)
+		try
 		{
-			try
-			{
-				await Vm.StopAsync(turnOff: true);
-			}
-			catch
-			{
-				// Swallow — if the host PS bridge is wedged we don't want to
-				// mask the actual test failure with a teardown error.
-			}
+			await Vm.StopAsync(turnOff: true);
+		}
+		catch
+		{
+			// Swallow — if the host PS bridge is wedged we don't want to
+			// mask the actual test failure with a teardown error.
 		}
 	}
 }

@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using FluentAssertions;
 
 namespace VhdxManager.E2E.Tests.Infrastructure;

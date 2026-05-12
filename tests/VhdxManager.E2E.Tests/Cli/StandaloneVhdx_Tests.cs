@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -28,11 +27,13 @@ public sealed class StandaloneVhdx_Tests : InstalledFixtureBase
 	{
 		// Fresh, empty workspace on the guest. The mount target must exist
 		// before `vhmgr create --mount` will attach to it.
-		await Guest.InvokeVoidAsync($@"
-Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path '{TestDir}' -Force | Out-Null
-New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
-");
+		await Guest.InvokeVoidAsync($"""
+
+			Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
+			New-Item -ItemType Directory -Path '{TestDir}' -Force | Out-Null
+			New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
+
+			""");
 	}
 
 	[Test, Order(1)]

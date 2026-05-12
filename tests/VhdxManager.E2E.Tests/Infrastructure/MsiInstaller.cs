@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace VhdxManager.E2E.Tests.Infrastructure;
 
 /// <summary>
@@ -51,22 +48,24 @@ public static class MsiInstaller
 		// its CWD. The bug was latent because Install/Uninstall/Repair only
 		// surface the LogPath/LogTail in failure messages; tests that try to
 		// actually read the log file (e.g. Upgrade_Tests) hit the missing path.
-		var script = $@"
-$log = Join-Path $env:TEMP ('vhmgr-msi-{verb}-' + [Guid]::NewGuid().ToString('N') + '.log')
-$argString = '{operation} /qn /norestart /l*v ""' + $log + '""'
-$proc = Start-Process -FilePath 'msiexec.exe' `
-    -ArgumentList $argString `
-    -NoNewWindow -PassThru -Wait
-[pscustomobject]@{{
-    ExitCode = [int]$proc.ExitCode
-    LogPath  = $log
-    LogTail  = if (Test-Path -LiteralPath $log) {{
-        # Tail the log on failure so the assertion message has something
-        # actionable. ~5 KB is enough to capture the last failed action
-        # without bloating the test output.
-        (Get-Content -LiteralPath $log -Tail 60 -ErrorAction SilentlyContinue) -join ""`n""
-    }} else {{ '' }}
-}}";
+		var script = $$"""
+
+			$log = Join-Path $env:TEMP ('vhmgr-msi-{{verb}}-' + [Guid]::NewGuid().ToString('N') + '.log')
+			$argString = '{{operation}} /qn /norestart /l*v "' + $log + '"'
+			$proc = Start-Process -FilePath 'msiexec.exe' `
+			    -ArgumentList $argString `
+			    -NoNewWindow -PassThru -Wait
+			[pscustomobject]@{
+			    ExitCode = [int]$proc.ExitCode
+			    LogPath  = $log
+			    LogTail  = if (Test-Path -LiteralPath $log) {
+			        # Tail the log on failure so the assertion message has something
+			        # actionable. ~5 KB is enough to capture the last failed action
+			        # without bloating the test output.
+			        (Get-Content -LiteralPath $log -Tail 60 -ErrorAction SilentlyContinue) -join "`n"
+			    } else { '' }
+			}
+			""";
 		return await s.InvokeJsonAsync<MsiResult>(script, ct);
 	}
 }

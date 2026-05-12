@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -32,11 +31,13 @@ public sealed class GuestSessionSmokeTests : E2EFixtureBase
 		// Sanity check: confirms the credential we just used really maps to
 		// a local admin in the guest. If this fails, FirstLogon.ps1 didn't
 		// apply or the bootstrap created a non-admin account.
-		var isAdmin = await Guest.InvokeJsonAsync<bool>(@"
-$id = [Security.Principal.WindowsIdentity]::GetCurrent()
-$principal = New-Object Security.Principal.WindowsPrincipal($id)
-$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-");
+		var isAdmin = await Guest.InvokeJsonAsync<bool>("""
+
+			$id = [Security.Principal.WindowsIdentity]::GetCurrent()
+			$principal = New-Object Security.Principal.WindowsPrincipal($id)
+			$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+			""");
 		isAdmin.Should().BeTrue();
 	}
 }

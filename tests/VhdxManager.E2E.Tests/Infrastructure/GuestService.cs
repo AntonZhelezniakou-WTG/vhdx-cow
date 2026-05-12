@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using FluentAssertions;
 
 namespace VhdxManager.E2E.Tests.Infrastructure;
@@ -20,17 +18,19 @@ public static class GuestService
 		// Win32_Service is the canonical source: StartName ("LocalSystem" /
 		// "NT AUTHORITY\NetworkService" / etc.) and StartMode ("Auto" /
 		// "Manual" / "Disabled") aren't on the Get-Service object.
-		=> s.InvokeJsonAsync<ServiceInfo?>($@"
-$svc = Get-CimInstance -ClassName Win32_Service -Filter ""Name='{Esc(name)}'"" -ErrorAction SilentlyContinue
-if ($null -eq $svc) {{ $null }} else {{
-    [pscustomobject]@{{
-        Name      = $svc.Name
-        State     = $svc.State        # Running, Stopped, ...
-        StartMode = $svc.StartMode    # Auto, Manual, Disabled
-        StartName = $svc.StartName    # LocalSystem, NT AUTHORITY\..., DOMAIN\user
-        ProcessId = [int]$svc.ProcessId
-    }}
-}}", ct);
+		=> s.InvokeJsonAsync<ServiceInfo?>($$"""
+
+			$svc = Get-CimInstance -ClassName Win32_Service -Filter "Name='{{Esc(name)}}'" -ErrorAction SilentlyContinue
+			if ($null -eq $svc) { $null } else {
+			    [pscustomobject]@{
+			        Name      = $svc.Name
+			        State     = $svc.State        # Running, Stopped, ...
+			        StartMode = $svc.StartMode    # Auto, Manual, Disabled
+			        StartName = $svc.StartName    # LocalSystem, NT AUTHORITY\..., DOMAIN\user
+			        ProcessId = [int]$svc.ProcessId
+			    }
+			}
+			""", ct);
 
 	public static async Task AssertRunningAsync(GuestSession s, string name, CancellationToken ct = default)
 	{

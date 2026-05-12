@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -14,25 +13,25 @@ namespace VhdxManager.E2E.Tests.Infrastructure;
 [Category("E2E-Smoke")]
 public sealed class PowerShellRunnerSmokeTests
 {
-	PowerShellRunner _runner = null!;
+	PowerShellRunner runner = null!;
 
 	[OneTimeSetUp]
 	public void SetUp()
 	{
-		_runner = new PowerShellRunner();
+		runner = new PowerShellRunner();
 	}
 
 	[Test]
 	public async Task RunRaw_Echoes_String()
 	{
-		var output = await _runner.RunRawAsync("'hello-from-ps'");
+		var output = await runner.RunRawAsync("'hello-from-ps'");
 		output.Should().Contain("hello-from-ps");
 	}
 
 	[Test]
 	public async Task RunJson_RoundTrips_PSObject()
 	{
-		var obj = await _runner.RunJsonAsync<Record>(
+		var obj = await runner.RunJsonAsync<Record>(
 			"[pscustomobject]@{ Name = 'vhdxtest'; Count = 42 }");
 		obj.Name.Should().Be("vhdxtest");
 		obj.Count.Should().Be(42);
@@ -41,14 +40,14 @@ public sealed class PowerShellRunnerSmokeTests
 	[Test]
 	public async Task RunJson_RoundTrips_Array()
 	{
-		var arr = await _runner.RunJsonAsync<int[]>("@(1, 2, 3)");
+		var arr = await runner.RunJsonAsync<int[]>("@(1, 2, 3)");
 		arr.Should().Equal(1, 2, 3);
 	}
 
 	[Test]
 	public async Task RunVoid_Surfaces_Errors_With_Script_Context()
 	{
-		var act = async () => await _runner.RunVoidAsync("throw 'kaboom'");
+		var act = async () => await runner.RunVoidAsync("throw 'kaboom'");
 		var assertion = await act.Should().ThrowAsync<PowerShellInvocationException>();
 		assertion.Which.Message.Should().Contain("kaboom");
 	}

@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace VhdxManager.E2E.Tests.Infrastructure;
 
@@ -41,7 +36,7 @@ public sealed class PowerShellRunner
 	// path resolver (rather than per-invocation) keeps cold tests snappier.
 	static readonly string PowerShellExe = ResolvePowerShellExe();
 
-	readonly string? _helpersScriptPath;
+	readonly string? helpersScriptPath;
 
 	/// <param name="helpersScriptPath">
 	/// Optional absolute path to <c>tests/e2e/lib/Helpers.ps1</c>. If supplied,
@@ -56,7 +51,7 @@ public sealed class PowerShellRunner
 				$"Helpers script not found at: {helpersScriptPath}",
 				helpersScriptPath);
 		}
-		_helpersScriptPath = helpersScriptPath;
+		this.helpersScriptPath = helpersScriptPath;
 	}
 
 	/// <summary>Returns the raw stdout captured from PowerShell (post-wrapper).</summary>
@@ -191,9 +186,9 @@ public sealed class PowerShellRunner
 		var sb = new StringBuilder();
 		sb.AppendLine("$ErrorActionPreference = 'Stop'");
 		sb.AppendLine("$ProgressPreference = 'SilentlyContinue'");
-		if (_helpersScriptPath is not null)
+		if (helpersScriptPath is not null)
 		{
-			sb.Append(". '").Append(_helpersScriptPath.Replace("'", "''")).AppendLine("'");
+			sb.Append(". '").Append(helpersScriptPath.Replace("'", "''")).AppendLine("'");
 		}
 		sb.AppendLine("try {");
 		// Wrap user body in a script block so its `return` semantics don't
@@ -201,22 +196,19 @@ public sealed class PowerShellRunner
 		sb.AppendLine("    $__pwshResult = & {");
 		sb.AppendLine(body);
 		sb.AppendLine("    }");
-		if (emitJson)
-		{
+		sb.AppendLine(emitJson
 			// Force the result through ConvertTo-Json. -Depth 8 covers the
 			// nested objects we hand around (snapshot lists, service info
 			// hashtables); -Compress keeps the wire small.
 			// Emit the literal JSON keyword "null" (4 chars, no quotes) so
 			// C# can deserialize as default(T) for nullable reference types.
-			sb.AppendLine("    if ($null -eq $__pwshResult) { 'null' | Write-Output } else { $__pwshResult | ConvertTo-Json -Depth 8 -Compress }");
-		}
-		else
-		{
+			? "    if ($null -eq $__pwshResult) { 'null' | Write-Output } else { $__pwshResult | ConvertTo-Json -Depth 8 -Compress }"
+
 			// Raw mode — write the script's result objects to host stdout via
 			// the default formatter (Out-String). Otherwise the result lives
 			// in $__pwshResult and is never visible to the C# caller.
-			sb.AppendLine("    if ($null -ne $__pwshResult) { $__pwshResult | Out-String -Stream }");
-		}
+			: "    if ($null -ne $__pwshResult) { $__pwshResult | Out-String -Stream }");
+
 		sb.AppendLine("} catch {");
 		// Emit a JSON error envelope to stdout so RunJsonAsync can detect it
 		// even when PowerShell decides to set exit code 0.
@@ -233,11 +225,10 @@ public sealed class PowerShellRunner
 		// %WINDIR%\System32 *is* the 64-bit copy (32-bit lives in SysWOW64).
 		var sysRoot = Environment.GetFolderPath(Environment.SpecialFolder.System);
 		var ps51 = Path.Combine(sysRoot, "WindowsPowerShell", "v1.0", "powershell.exe");
-		if (File.Exists(ps51)) return ps51;
 
 		// Fallback: PATH lookup. If even powershell.exe isn't on PATH the
 		// developer has bigger problems than these tests.
-		return "powershell.exe";
+		return File.Exists(ps51) ? ps51 : "powershell.exe";
 	}
 }
 
@@ -247,30 +238,16 @@ public sealed class PowerShellRunner
 /// to copy/paste into a PS window) and both std streams so a test failure
 /// message is actionable.
 /// </summary>
-public sealed class PowerShellInvocationException : Exception
+public sealed class PowerShellInvocationException(int exitCode, string script, string stdout, string stderr)
+	: Exception(BuildMessage(exitCode, script, stdout, stderr))
 {
-	public int    ExitCode { get; }
-	public string Script   { get; }
-	public string Stdout   { get; }
-	public string Stderr   { get; }
-
-	public PowerShellInvocationException(int exitCode, string script, string stdout, string stderr)
-		: base(BuildMessage(exitCode, script, stdout, stderr))
-	{
-		ExitCode = exitCode;
-		Script   = script;
-		Stdout   = stdout;
-		Stderr   = stderr;
-	}
+	public int    ExitCode { get; } = exitCode;
+	public string Script   { get; } = script;
+	public string Stdout   { get; } = stdout;
+	public string Stderr   { get; } = stderr;
 
 	static string BuildMessage(int exitCode, string script, string stdout, string stderr)
 	{
-		// Truncate massive outputs so a single failure doesn't drown the test
-		// runner's console. Anyone needing the full payload can grab .Stdout /
-		// .Stderr off the exception.
-		static string Trim(string s, int cap)
-			=> s.Length <= cap ? s : s[..cap] + $"… (+{s.Length - cap} more chars)";
-
 		var sb = new StringBuilder();
 		sb.AppendLine($"PowerShell exited with code {exitCode}.");
 		sb.AppendLine("--- script ---");
@@ -280,5 +257,11 @@ public sealed class PowerShellInvocationException : Exception
 		sb.AppendLine("--- stderr ---");
 		sb.AppendLine(Trim(stderr, 2_000));
 		return sb.ToString();
+
+		// Truncate massive outputs so a single failure doesn't drown the test
+		// runner's console. Anyone needing the full payload can grab .Stdout /
+		// .Stderr off the exception.
+		static string Trim(string s, int cap)
+			=> s.Length <= cap ? s : s[..cap] + $"… (+{s.Length - cap} more chars)";
 	}
 }

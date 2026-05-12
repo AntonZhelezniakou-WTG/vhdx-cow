@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 using VhdxManager.E2E.Tests.Infrastructure;
@@ -54,12 +53,14 @@ public sealed class Publish_Tests : InstalledFixtureBase
 
 	protected override async Task OnGuestReadyAsync()
 	{
-		await Guest.InvokeVoidAsync($@"
-Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path '{TestDir}'      -Force | Out-Null
-New-Item -ItemType Directory -Path '{ChildMount}'   -Force | Out-Null
-New-Item -ItemType Directory -Path '{OverlayMount}' -Force | Out-Null
-");
+		await Guest.InvokeVoidAsync($"""
+
+			Remove-Item -LiteralPath '{TestDir}' -Recurse -Force -ErrorAction SilentlyContinue
+			New-Item -ItemType Directory -Path '{TestDir}'      -Force | Out-Null
+			New-Item -ItemType Directory -Path '{ChildMount}'   -Force | Out-Null
+			New-Item -ItemType Directory -Path '{OverlayMount}' -Force | Out-Null
+
+			""");
 
 		// Parent VHDX — standalone, not mounted. The differencing model requires
 		// the parent file to exist but not be attached when children are created.
