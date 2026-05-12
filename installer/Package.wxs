@@ -13,9 +13,41 @@
 		<SummaryInformation
 			Description="VHDX Manager for Windows" />
 
+		<!--
+			Schedule="afterInstallExecute": new product installs FIRST, then
+			RemoveExistingProducts removes the old. This is the WiX-recommended
+			schedule for installers that use `<Files Include="**">` harvesting:
+			the harvester emits deterministic ComponentIDs derived from file
+			paths, so the same ComponentID appears in both old and new MSI for
+			every file at the same relative path. With "afterInstallInitialize"
+			(old-then-new) Windows Installer sees the shared components as
+			"Unchanged" between the two installs, skips InstallFiles for them
+			during the new install, then deletes them as part of removing the
+			old product — leaving the install with no `vhmgr.exe` or
+			`VhdxManager.Service.exe`. "afterInstallExecute" installs the new
+			version first; the subsequent RemoveExistingProducts sees the shared
+			components as still referenced (by the new install) and leaves them
+			in place. Covered by tests/VhdxManager.E2E.Tests/Installer/Upgrade_Tests.cs.
+		-->
 		<MajorUpgrade
 			DowngradeErrorMessage="A newer version of [ProductName] is already installed."
-			Schedule="afterInstallInitialize" />
+			Schedule="afterInstallExecute" />
+
+		<!--
+			Force every file to be re-installed during a MajorUpgrade, regardless
+			of the version stamp on the on-disk file. Without this, Windows
+			Installer's default REINSTALLMODE ("omus") compares FileVersion of
+			the candidate file against the installed one and keeps whichever is
+			newer. A prior release that shipped without an explicit
+			/p:Version=X.Y.Z on `dotnet publish` would have FileVersion=1.0.0.0
+			(SDK default) on its binaries; any future release with a "real"
+			lower-numbered version (e.g. 0.2.1) would lose the version
+			comparison and the upgrade would silently keep the old binaries
+			even though the package is registered as the new version.
+			"amus" — Always overwrite, rewrite Machine reg, rewrite User reg,
+			recreate Shortcuts — sidesteps this comparison entirely.
+		-->
+		<Property Id="REINSTALLMODE" Value="amus" />
 
 		<MediaTemplate EmbedCab="yes" />
 

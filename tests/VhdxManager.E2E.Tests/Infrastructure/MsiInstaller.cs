@@ -44,10 +44,18 @@ public static class MsiInstaller
 		// stdout/stderr are basically empty — it logs everything internally
 		// and exits with a code. Provide /l*v so we have something to
 		// attach to a failing assertion.
+		// NOTE: we build the argument string in PowerShell rather than embedding
+		// $log inside a single-quoted literal — single-quoted strings do NOT
+		// expand variables, so the previous form silently sent the literal
+		// "$log" to msiexec, which wrote the log to a file *named* "$log" in
+		// its CWD. The bug was latent because Install/Uninstall/Repair only
+		// surface the LogPath/LogTail in failure messages; tests that try to
+		// actually read the log file (e.g. Upgrade_Tests) hit the missing path.
 		var script = $@"
 $log = Join-Path $env:TEMP ('vhmgr-msi-{verb}-' + [Guid]::NewGuid().ToString('N') + '.log')
+$argString = '{operation} /qn /norestart /l*v ""' + $log + '""'
 $proc = Start-Process -FilePath 'msiexec.exe' `
-    -ArgumentList '{operation} /qn /norestart /l*v ""$log""' `
+    -ArgumentList $argString `
     -NoNewWindow -PassThru -Wait
 [pscustomobject]@{{
     ExitCode = [int]$proc.ExitCode

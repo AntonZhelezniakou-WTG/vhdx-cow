@@ -47,6 +47,7 @@ checks (no VM needed) — useful when iterating on the harness itself.
 | `Uninstall_Tests` (Order 2) | `installed-clean@<sha8>` | ~1.5 min | ~1.5 min |
 | `Reinstall_Tests` (Order 3) | `installed-clean@<sha8>` — runs `/i` over top | ~1.5 min | ~1.5 min |
 | `Repair_Tests` (Order 4) | `installed-clean@<sha8>` — deletes `vhmgr.exe`, runs `/fp` | ~2 min | ~2 min |
+| `Upgrade_Tests` (Order 5) | `installed-clean@<sha8>` — builds X+1 MSI on host, runs `/i` over X | ~5 min | ~5 min |
 
 The installer test asserts these files/dirs exist post-install (mirrors the
 WiX component layout — keep in sync when the installer changes):
