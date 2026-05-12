@@ -9,7 +9,7 @@ using VhdxManager.Contracts;
 namespace VhdxManager.Cli;
 
 /// <summary>
-/// `vhmgr logs` — collects Windows Event Log entries related to the VhdxManager service
+/// `vhdx logs` — collects Windows Event Log entries related to the VhdxManager service
 /// (System log: Service Control Manager events; Application log: VhdxManager / .NET
 /// Runtime / Application Error events) since a given start time, and writes them to
 /// stdout or a file.

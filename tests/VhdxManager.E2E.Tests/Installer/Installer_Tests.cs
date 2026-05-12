@@ -61,7 +61,7 @@ public sealed class Installer_Tests : E2EFixtureBase
 		await GuestFs.AssertFileExistsAsync(Guest, @"C:\Program Files\VhdxManager\Service\VhdxManager.Service.exe");
 		await GuestFs.AssertFileExistsAsync(Guest, @"C:\Program Files\VhdxManager\Service\appsettings.json");
 		// CLI binary.
-		await GuestFs.AssertFileExistsAsync(Guest, @"C:\Program Files\VhdxManager\Cli\vhmgr.exe");
+		await GuestFs.AssertFileExistsAsync(Guest, @"C:\Program Files\VhdxManager\Cli\vhdx.exe");
 		// ProgramData layout: logs directory + diagnostics script. We don't
 		// assert any specific log file because filenames include the date.
 		await GuestFs.AssertDirExistsAsync(Guest, @"C:\ProgramData\VhdxManager\logs");
@@ -76,15 +76,15 @@ public sealed class Installer_Tests : E2EFixtureBase
 		// PATH was just amended by msiexec; a fresh PSSession picks up the
 		// updated machine PATH (PSSession spawns a new process which reads
 		// the registry fresh). Get-Command resolves Application-type entries.
-		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhmgr.exe");
+		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhdx.exe");
 		onPath.Should().BeTrue("the installer is expected to add the CLI directory to the machine PATH");
 
-		// Phase A contract: vhmgr ping exits 0 with non-empty stdout. We
+		// Phase A contract: vhdx ping exits 0 with non-empty stdout. We
 		// don't lock down the exact text yet — that becomes a Phase B test
 		// once the output format is stable.
-		var ping = await GuestProcess.RunAsync(Guest, "vhmgr.exe", "ping", workingDir: @"C:\");
+		var ping = await GuestProcess.RunAsync(Guest, "vhdx.exe", "ping", workingDir: @"C:\");
 		ping.Succeeded.Should().BeTrue(
-			$"`vhmgr ping` returned {ping.ExitCode}.\nstdout: {ping.StdoutText}\nstderr: {ping.StderrText}");
+			$"`vhdx ping` returned {ping.ExitCode}.\nstdout: {ping.StdoutText}\nstderr: {ping.StderrText}");
 		ping.StdoutText.Should().NotBeNullOrWhiteSpace(
 			"ping should print at least the service version / pipe round-trip confirmation");
 	}

@@ -11,7 +11,7 @@ Description: >-
   Manages VHDX virtual disks on Windows: create, attach, mount to NTFS folders,
   detach, merge differencing chains, and convert existing folders into
   VHDX-backed mounts. A Windows Service handles privileged disk operations via
-  P/Invoke; the 'vhmgr' CLI communicates with it over a local gRPC/named-pipe
+  P/Invoke; the 'vhdx' CLI communicates with it over a local gRPC/named-pipe
   channel.
 Tags:
   - vhdx

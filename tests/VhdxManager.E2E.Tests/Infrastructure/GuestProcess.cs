@@ -46,8 +46,8 @@ public static class GuestProcess
 
 		var script = $$"""
 
-			$stdoutFile = Join-Path $env:TEMP ('vhmgr-stdout-' + [Guid]::NewGuid().ToString('N') + '.log')
-			$stderrFile = Join-Path $env:TEMP ('vhmgr-stderr-' + [Guid]::NewGuid().ToString('N') + '.log')
+			$stdoutFile = Join-Path $env:TEMP ('vhdx-stdout-' + [Guid]::NewGuid().ToString('N') + '.log')
+			$stderrFile = Join-Path $env:TEMP ('vhdx-stderr-' + [Guid]::NewGuid().ToString('N') + '.log')
 			try {
 			    $proc = Start-Process -FilePath '{{Esc(exe)}}' -ArgumentList '{{Esc(args)}}' {{wdParam}} `
 			        -NoNewWindow -PassThru -Wait `

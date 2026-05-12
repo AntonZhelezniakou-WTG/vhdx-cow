@@ -50,7 +50,7 @@ public static class MsiInstaller
 		// actually read the log file (e.g. Upgrade_Tests) hit the missing path.
 		var script = $$"""
 
-			$log = Join-Path $env:TEMP ('vhmgr-msi-{{verb}}-' + [Guid]::NewGuid().ToString('N') + '.log')
+			$log = Join-Path $env:TEMP ('vhdx-msi-{{verb}}-' + [Guid]::NewGuid().ToString('N') + '.log')
 			$argString = '{{operation}} /qn /norestart /l*v "' + $log + '"'
 			$proc = Start-Process -FilePath 'msiexec.exe' `
 			    -ArgumentList $argString `

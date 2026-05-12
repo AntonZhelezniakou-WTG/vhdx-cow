@@ -10,7 +10,7 @@ namespace VhdxManager.E2E.Tests.Installer;
 ///
 /// <para>The <c>/fp</c> mode reinstalls any file that is missing — it does
 /// not touch files that are present and unmodified. We delete
-/// <c>vhmgr.exe</c> (the CLI binary) rather than the service executable
+/// <c>vhdx.exe</c> (the CLI binary) rather than the service executable
 /// to avoid complications from file locks on the running service; the
 /// service is stopped and restarted by <c>ServiceControl Stop="both"</c>
 /// anyway, but targeting a non-running binary keeps the setup simpler.</para>
@@ -22,7 +22,7 @@ namespace VhdxManager.E2E.Tests.Installer;
 [Order(4)]
 public sealed class Repair_Tests : InstalledFixtureBase
 {
-	const string CliExe = @"C:\Program Files\VhdxManager\Cli\vhmgr.exe";
+	const string CliExe = @"C:\Program Files\VhdxManager\Cli\vhdx.exe";
 
 	MsiResult repairResult = null!;
 
@@ -34,7 +34,7 @@ public sealed class Repair_Tests : InstalledFixtureBase
 		// Confirm the file is actually gone before invoking repair so a
 		// false-positive in the post-repair assertion is immediately visible.
 		var gone = await GuestFs.ExistsAsync(Guest, CliExe);
-		Assert.That(gone, Is.False, "pre-repair: vhmgr.exe should be deleted before repair runs");
+		Assert.That(gone, Is.False, "pre-repair: vhdx.exe should be deleted before repair runs");
 
 		var guestMsiPath = InstalledCheckpoint.GuestMsiPath(Msi);
 		repairResult = await MsiInstaller.RepairSilentAsync(Guest, guestMsiPath);

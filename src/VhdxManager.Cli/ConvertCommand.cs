@@ -5,7 +5,7 @@ using VhdxManager.Client;
 namespace VhdxManager.Cli;
 
 /// <summary>
-/// `vhmgr convert` — convert an existing folder into a VHDX-mounted folder.
+/// `vhdx convert` — convert an existing folder into a VHDX-mounted folder.
 /// Renames the source folder aside, creates + mounts a fresh VHDX in its place,
 /// robocopies content back, optionally deletes the staging copy.
 /// </summary>
@@ -137,7 +137,7 @@ static class ConvertCommand
 					}
 				}
 
-				AnsiConsole.MarkupLine("[bold]vhmgr convert[/]");
+				AnsiConsole.MarkupLine("[bold]vhdx convert[/]");
 				using var progress = new ProgressRenderer();
 				var resp = await client.ConvertFolderAsync(
 					folder,

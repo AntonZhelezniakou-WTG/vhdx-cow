@@ -185,7 +185,7 @@ Restore-VMSnapshot -VMName VhdxManagerE2E -Name pre-install-clean -Confirm:$fals
   `installed-clean` — the latter created by the test runner the first time
   it sees a new MSI).
 * Tests run as `Invoke-Command -VMName VhdxManagerE2E -Credential ...`
-  blocks that exec `vhmgr.exe` and assert state via the guest's filesystem
+  blocks that exec `vhdx.exe` and assert state via the guest's filesystem
   / `Get-Service` / `Get-MpPreference`.
 * No host↔guest networking → MSI is shipped over `Copy-Item -ToSession
   (New-PSSession -VMName ...)`.

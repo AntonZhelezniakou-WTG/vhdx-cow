@@ -5,7 +5,7 @@ using VhdxManager.Client;
 namespace VhdxManager.Cli;
 
 /// <summary>
-/// `vhmgr config` — read/write service-side defaults persisted in the
+/// `vhdx config` — read/write service-side defaults persisted in the
 /// service's appsettings.json. Currently, exposes one key:
 /// <c>add-defender-exclusion</c> (tri-state: true / false / unset).
 /// </summary>

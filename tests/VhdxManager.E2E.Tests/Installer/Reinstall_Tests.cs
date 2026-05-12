@@ -58,14 +58,14 @@ public sealed class Reinstall_Tests : InstalledFixtureBase
 		await GuestFs.AssertFileExistsAsync(Guest,
 			@"C:\Program Files\VhdxManager\Service\VhdxManager.Service.exe");
 		await GuestFs.AssertFileExistsAsync(Guest,
-			@"C:\Program Files\VhdxManager\Cli\vhmgr.exe");
+			@"C:\Program Files\VhdxManager\Cli\vhdx.exe");
 	}
 
 	[Test]
 	public async Task Cli_Still_On_Path_After_Reinstall()
 	{
 		if (!reinstallResult.Succeeded) Assert.Inconclusive("Reinstall step failed.");
-		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhmgr.exe");
+		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhdx.exe");
 		onPath.Should().BeTrue(
 			"reinstall must leave the CLI directory on the machine PATH");
 	}

@@ -5,7 +5,7 @@ using VhdxManager.Client;
 namespace VhdxManager.Cli;
 
 /// <summary>
-/// `vhmgr create` — create a fresh standalone VHDX (GPT + NTFS) and optionally
+/// `vhdx create` — create a fresh standalone VHDX (GPT + NTFS) and optionally
 /// mount it to a folder. Missing required options are prompted for via Spectre.
 /// </summary>
 static class CreateCommand
@@ -141,7 +141,7 @@ static class CreateCommand
 					addDefenderExclusionRaw, client, ct);
 
 				AnsiConsole.MarkupLine(
-					$"[bold]vhmgr create[/] [grey]({InteractivePrompt.FormatSize(sizeBytes)}, {(dynamic ? "dynamic" : "fixed")}, fs={fs}, label={label}, defender={addDefender})[/]");
+					$"[bold]vhdx create[/] [grey]({InteractivePrompt.FormatSize(sizeBytes)}, {(dynamic ? "dynamic" : "fixed")}, fs={fs}, label={label}, defender={addDefender})[/]");
 
 				// Per-step progress is rendered live by ProgressRenderer; the streaming
 				// RPC emits STARTED/COMPLETED/FAILED events for every internal step.
@@ -206,8 +206,8 @@ static class CreateCommand
 	}
 
 	/// <summary>
-	/// `vhmgr create --parent …` branch: create a differencing child VHDX via
-	/// the same RPC as `vhmgr init`. Per design, --mount is mandatory in this
+	/// `vhdx create --parent …` branch: create a differencing child VHDX via
+	/// the same RPC as `vhdx init`. Per design, --mount is mandatory in this
 	/// branch (we do not silently substitute prompts) and every standalone-only
 	/// option is rejected up-front so the user gets a fast, explicit error
 	/// rather than seeing flags silently dropped on the floor.
@@ -258,7 +258,7 @@ static class CreateCommand
 			addDefenderExclusionRaw, client, ct);
 
 		AnsiConsole.MarkupLine(
-			$"[bold]vhmgr create[/] [grey](child of {parent}, mount={mount}, defender={addDefender})[/]");
+			$"[bold]vhdx create[/] [grey](child of {parent}, mount={mount}, defender={addDefender})[/]");
 
 		using var progress = new ProgressRenderer();
 		var resp = await client.CreateChildAsync(parent, path, mount, addDefender, progress.Handle, ct);

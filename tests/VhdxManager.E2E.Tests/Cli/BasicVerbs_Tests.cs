@@ -21,10 +21,10 @@ public sealed class BasicVerbs_Tests : InstalledFixtureBase
 	[Test, Order(1)]
 	public async Task Ping_Returns_Service_Info()
 	{
-		var r = await Vhmgr.RunAsync(Guest, "ping");
+		var r = await Vhdx.RunAsync(Guest, "ping");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr ping` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
+			$"`vhdx ping` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
 		// Contract from PingCommand:
 		//   "Service is running. Version: {ver}, Active mounts: {count}"
 		// Both fragments are stable post-install. We pin the suffix
@@ -39,10 +39,10 @@ public sealed class BasicVerbs_Tests : InstalledFixtureBase
 	[Test, Order(2)]
 	public async Task List_Returns_No_Mounts_When_Empty()
 	{
-		var r = await Vhmgr.RunAsync(Guest, "list");
+		var r = await Vhdx.RunAsync(Guest, "list");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr list` returned {r.ExitCode}. stderr: {r.StderrText}");
+			$"`vhdx list` returned {r.ExitCode}. stderr: {r.StderrText}");
 		// Contract from ListCommand: literal "No active mounts." on empty.
 		r.StdoutText.Should().Contain("No active mounts");
 	}
@@ -54,7 +54,7 @@ public sealed class BasicVerbs_Tests : InstalledFixtureBase
 		// own tests build on top of. If a verb stops showing up here,
 		// either it was removed (Phase B fixtures will fail immediately
 		// and loudly) or the help text was reorganized (we want to know).
-		var r = await Vhmgr.RunAsync(Guest, "--help");
+		var r = await Vhdx.RunAsync(Guest, "--help");
 
 		r.Succeeded.Should().BeTrue();
 		foreach (var verb in (string[])[
@@ -74,14 +74,14 @@ public sealed class BasicVerbs_Tests : InstalledFixtureBase
 			])
 		{
 			r.StdoutText.Should().Contain(verb,
-				$"`vhmgr --help` is expected to document the '{verb}' command");
+				$"`vhdx --help` is expected to document the '{verb}' command");
 		}
 	}
 
 	[Test, Order(4)]
 	public async Task Version_Prints_Something()
 	{
-		var r = await Vhmgr.RunAsync(Guest, "--version");
+		var r = await Vhdx.RunAsync(Guest, "--version");
 
 		r.Succeeded.Should().BeTrue();
 		// We don't pin the exact version string (CI bumps it on every

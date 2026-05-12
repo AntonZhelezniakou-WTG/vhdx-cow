@@ -8,7 +8,7 @@ namespace VhdxManager.Cli;
 /// command invocation, using the standard precedence:
 /// <list type="number">
 /// <item>explicit CLI flag wins</item>
-/// <item>else service-side persisted default (set via <c>vhmgr config set</c>)</item>
+/// <item>else service-side persisted default (set via <c>vhdx config set</c>)</item>
 /// <item>else interactive prompt (<see cref="InteractivePrompt.AskBool"/>)</item>
 /// </list>
 /// In non-interactive mode the prompt throws — callers are then expected to

@@ -111,7 +111,7 @@ public sealed class PowerShellRunner
 		// the documented happy-path for "run this script and give me back its
 		// output", with the only downside being an extra file write.
 		var scriptFile = Path.Combine(Path.GetTempPath(),
-			$"vhmgr-e2e-{Guid.NewGuid():N}.ps1");
+			$"vhdx-e2e-{Guid.NewGuid():N}.ps1");
 		// UTF-8 *with* BOM so Windows PowerShell 5.1 unambiguously detects
 		// the encoding (without the BOM 5.1 falls back to the system ANSI
 		// codepage on multi-byte characters).

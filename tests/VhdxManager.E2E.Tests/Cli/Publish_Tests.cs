@@ -5,15 +5,15 @@ using VhdxManager.E2E.Tests.Infrastructure;
 namespace VhdxManager.E2E.Tests.Cli;
 
 /// <summary>
-/// Full <c>vhmgr publish</c> lifecycle against two registered children:
+/// Full <c>vhdx publish</c> lifecycle against two registered children:
 /// <list type="number">
 /// <item>Create a standalone parent VHDX (no mount).</item>
-/// <item><c>vhmgr init</c> a managed <em>child</em> from the parent — represents
+/// <item><c>vhdx init</c> a managed <em>child</em> from the parent — represents
 ///   a worker that will be recreated after the publish.</item>
-/// <item><c>vhmgr init</c> an <em>overlay</em> from the same parent — this is
+/// <item><c>vhdx init</c> an <em>overlay</em> from the same parent — this is
 ///   the staging child whose changes will be merged into the parent.</item>
 /// <item>Write a marker file to the overlay's mount path.</item>
-/// <item><c>vhmgr publish --overlay &lt;overlay.vhdx&gt;</c> — merges the
+/// <item><c>vhdx publish --overlay &lt;overlay.vhdx&gt;</c> — merges the
 ///   overlay into the parent, recreates all registered children.</item>
 /// <item>Assert the marker is now visible through every child mount (it was in
 ///   the overlay → merged into parent → inherited by all fresh children).</item>
@@ -66,7 +66,7 @@ public sealed class Publish_Tests : InstalledFixtureBase
 		// the parent file to exist but not be attached when children are created.
 		// `--mount ""` triggers the "Detaching (no mount requested)" service path
 		// so the file is left on disk in a clean detached state.
-		var parent = await Vhmgr.RunAsync(Guest,
+		var parent = await Vhdx.RunAsync(Guest,
 			$"create --path \"{ParentPath}\" --size 256M --label parent " +
 			$"--mount \"\" --filesystem NTFS --add-defender-exclusion false");
 		Assert.That(parent.Succeeded, Is.True,
@@ -74,7 +74,7 @@ public sealed class Publish_Tests : InstalledFixtureBase
 
 		// Managed child — will be detached + deleted + recreated fresh after publish.
 		// Represents a "worker" that always gets a clean slate when the parent updates.
-		var child = await Vhmgr.RunAsync(Guest,
+		var child = await Vhdx.RunAsync(Guest,
 			$"init --parent \"{ParentPath}\" --child \"{ChildPath}\" " +
 			$"--mount \"{ChildMount}\" --add-defender-exclusion false");
 		Assert.That(child.Succeeded, Is.True,
@@ -83,7 +83,7 @@ public sealed class Publish_Tests : InstalledFixtureBase
 		// Overlay child — changes written here will be merged permanently into the
 		// parent by publish. It is also a registered child (in the state store), so
 		// after publish it too is recreated fresh from the updated parent.
-		var overlay = await Vhmgr.RunAsync(Guest,
+		var overlay = await Vhdx.RunAsync(Guest,
 			$"init --parent \"{ParentPath}\" --child \"{OverlayPath}\" " +
 			$"--mount \"{OverlayMount}\" --add-defender-exclusion false");
 		Assert.That(overlay.Succeeded, Is.True,
@@ -116,10 +116,10 @@ public sealed class Publish_Tests : InstalledFixtureBase
 	{
 		if (!_setupSucceeded) Assert.Inconclusive("marker-write step failed; nothing to publish");
 
-		var r = await Vhmgr.RunAsync(Guest, $"publish --overlay \"{OverlayPath}\"");
+		var r = await Vhdx.RunAsync(Guest, $"publish --overlay \"{OverlayPath}\"");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr publish` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
+			$"`vhdx publish` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
 
 		// Two registered children: child.vhdx + overlay.vhdx.
 		// Both are recreated as fresh differencing disks from the updated parent.
@@ -152,8 +152,8 @@ public sealed class Publish_Tests : InstalledFixtureBase
 	{
 		if (!_publishSucceeded) Assert.Inconclusive("publish step failed; nothing to inspect");
 
-		// Publish should remount both children — they must appear in `vhmgr list`.
-		var r = await Vhmgr.RunAsync(Guest, "list");
+		// Publish should remount both children — they must appear in `vhdx list`.
+		var r = await Vhdx.RunAsync(Guest, "list");
 		r.Succeeded.Should().BeTrue();
 		r.StdoutText.Should().Contain("child.vhdx",
 			$"managed child must be remounted after publish. stdout: {r.StdoutText}");

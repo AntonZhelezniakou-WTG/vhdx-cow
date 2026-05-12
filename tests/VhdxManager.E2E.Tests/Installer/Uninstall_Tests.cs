@@ -63,7 +63,7 @@ public sealed class Uninstall_Tests : InstalledFixtureBase
 		// A fresh PSSession reads machine PATH from the registry, so this check
 		// does not require a reboot — the updated registry value is visible
 		// immediately in any newly-spawned process.
-		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhmgr.exe");
+		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhdx.exe");
 		onPath.Should().BeFalse(
 			"uninstall must remove the CLI directory from the machine PATH " +
 			"(WiX CliPathComponent Environment/@Permanent='no')");
