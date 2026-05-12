@@ -278,7 +278,7 @@ try {
 	}
 	$btnSave = & $makeButton 'Save As...' 110 {
 		$sfd = New-Object System.Windows.Forms.SaveFileDialog
-		$sfd.FileName = "vhmgr-install-diag-$((Get-Date).ToString('yyyyMMdd-HHmmss')).log"
+		$sfd.FileName = "vhdx-install-diag-$((Get-Date).ToString('yyyyMMdd-HHmmss')).log"
 		$sfd.Filter = 'Log files (*.log)|*.log|All files (*.*)|*.*'
 		$sfd.Title = 'Save VhdxManager installation diagnostic report'
 		if ($sfd.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {

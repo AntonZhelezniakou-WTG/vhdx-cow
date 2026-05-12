@@ -1,6 +1,6 @@
 # VhdxManager.E2E.Tests
 
-End-to-end tests that drive the WiX MSI and `vhmgr.exe` CLI against a
+End-to-end tests that drive the WiX MSI and `vhdx.exe` CLI against a
 disposable Hyper-V VM (`VhdxManagerE2E`). Phase A (this PR) covers the
 installer surface; Phase B will cover every CLI verb.
 
@@ -46,7 +46,7 @@ checks (no VM needed) — useful when iterating on the harness itself.
 | `Installer_Tests` (Order 1) | `pre-install-clean` | ~2 min | ~2 min |
 | `Uninstall_Tests` (Order 2) | `installed-clean@<sha8>` | ~1.5 min | ~1.5 min |
 | `Reinstall_Tests` (Order 3) | `installed-clean@<sha8>` — runs `/i` over top | ~1.5 min | ~1.5 min |
-| `Repair_Tests` (Order 4) | `installed-clean@<sha8>` — deletes `vhmgr.exe`, runs `/fp` | ~2 min | ~2 min |
+| `Repair_Tests` (Order 4) | `installed-clean@<sha8>` — deletes `vhdx.exe`, runs `/fp` | ~2 min | ~2 min |
 | `Upgrade_Tests` (Order 5) | `installed-clean@<sha8>` — builds X+1 MSI on host, runs `/i` over X | ~5 min | ~5 min |
 
 The installer test asserts these files/dirs exist post-install (mirrors the
@@ -56,7 +56,7 @@ WiX component layout — keep in sync when the installer changes):
 |---|---|
 | `C:\Program Files\VhdxManager\Service\VhdxManager.Service.exe` | Service binary |
 | `C:\Program Files\VhdxManager\Service\appsettings.json` | Service config (ships with the binary) |
-| `C:\Program Files\VhdxManager\Cli\vhmgr.exe` | CLI on PATH |
+| `C:\Program Files\VhdxManager\Cli\vhdx.exe` | CLI on PATH |
 | `C:\ProgramData\VhdxManager\logs` | Service log directory |
 
 ### Phase B — CLI verbs (scenario fixtures)
@@ -111,7 +111,7 @@ Infrastructure/
 ├── InstalledCheckpoint  — naming + staging paths for per-MSI snapshot
 ├── E2EFixtureBase       — [OneTimeSetUp] restores snapshot, boots, opens GuestSession
 ├── InstalledFixtureBase — adds CheckpointName = installed-clean@<sha8> (Phase B base)
-└── Vhmgr                — `vhmgr.exe` invocation helper (absolute path, redirected I/O)
+└── Vhdx                — `vhdx.exe` invocation helper (absolute path, redirected I/O)
 ```
 
 The C# → PowerShell bridge spawns `powershell.exe -File <tempscript.ps1>`

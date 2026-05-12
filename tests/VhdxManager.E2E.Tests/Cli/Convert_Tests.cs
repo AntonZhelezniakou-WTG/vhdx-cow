@@ -5,7 +5,7 @@ using VhdxManager.E2E.Tests.Infrastructure;
 namespace VhdxManager.E2E.Tests.Cli;
 
 /// <summary>
-/// <c>vhmgr convert</c> takes an existing folder, renames it aside, creates
+/// <c>vhdx convert</c> takes an existing folder, renames it aside, creates
 /// a fresh VHDX in its place, formats + mounts the VHDX to the original
 /// path, and robocopies the renamed folder's contents back in. The
 /// destructive bits are gated by <c>--yes</c> (skip the confirmation
@@ -41,12 +41,12 @@ public sealed class Convert_Tests : InstalledFixtureBase
 		// size we've observed format reliably. The VHDX is dynamic (default),
 		// so actual on-disk footprint is only a few MB until populated —
 		// 4 GB is just the logical maximum.
-		var r = await Vhmgr.RunAsync(Guest,
+		var r = await Vhdx.RunAsync(Guest,
 			$"convert --folder \"{SourceDir}\" --vhdx \"{VhdxPath}\" --size 4G --label e2econv " +
 			$"--yes --add-defender-exclusion false");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr convert` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
+			$"`vhdx convert` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
 
 		convertSucceeded = true;
 
@@ -74,7 +74,7 @@ public sealed class Convert_Tests : InstalledFixtureBase
 	{
 		if (!convertSucceeded) Assert.Inconclusive("convert step failed; nothing to inspect");
 
-		var r = await Vhmgr.RunAsync(Guest, "list");
+		var r = await Vhdx.RunAsync(Guest, "list");
 		r.Succeeded.Should().BeTrue();
 		r.StdoutText.Should().Contain("src.vhdx",
 			$"convert mounts the new VHDX — it should appear in list. stdout: {r.StdoutText}");

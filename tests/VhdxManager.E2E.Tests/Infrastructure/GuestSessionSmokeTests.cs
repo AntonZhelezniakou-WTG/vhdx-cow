@@ -18,11 +18,11 @@ public sealed class GuestSessionSmokeTests : E2EFixtureBase
 	[Test]
 	public async Task Guest_Hostname_Matches_Expected()
 	{
-		// The autounattend.xml.template hard-codes ComputerName=VHMGRTEST.
+		// The autounattend.xml.template hard-codes ComputerName=VHDXTEST.
 		// If this assertion ever drifts it means someone changed the template
 		// without re-running the bootstrap script.
 		var hostname = await Guest.InvokeJsonAsync<string>("hostname");
-		hostname.Should().BeEquivalentTo("VHMGRTEST");
+		hostname.Should().BeEquivalentTo("VHDXTEST");
 	}
 
 	[Test]

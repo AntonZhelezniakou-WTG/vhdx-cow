@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<AssemblyName>vhmgr</AssemblyName>
+		<AssemblyName>vhdx</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

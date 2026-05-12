@@ -5,7 +5,7 @@ using VhdxManager.E2E.Tests.Infrastructure;
 namespace VhdxManager.E2E.Tests.Cli;
 
 /// <summary>
-/// <c>vhmgr logs</c> reads Windows Event Log entries related to the service
+/// <c>vhdx logs</c> reads Windows Event Log entries related to the service
 /// and pretty-prints them. It's a read-only, client-side collector — no
 /// gRPC round-trip, no state mutation — so a single VM boot can drive
 /// every assertion cheaply.
@@ -20,10 +20,10 @@ public sealed class Logs_Tests : InstalledFixtureBase
 		// `--since install` is the default-but-explicit form. The service
 		// has been running since the snapshot was taken, so at minimum we
 		// expect a "Service started" / install-time entry in the report.
-		var r = await Vhmgr.RunAsync(Guest, "logs --since install");
+		var r = await Vhdx.RunAsync(Guest, "logs --since install");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr logs --since install` returned {r.ExitCode}. stderr: {r.StderrText}");
+			$"`vhdx logs --since install` returned {r.ExitCode}. stderr: {r.StderrText}");
 		r.StdoutText.Should().NotBeNullOrWhiteSpace(
 			"logs should print at least a metadata header even with no events");
 	}
@@ -37,10 +37,10 @@ public sealed class Logs_Tests : InstalledFixtureBase
 			Remove-Item -LiteralPath 'C:\E2E\events.txt' -Force -ErrorAction SilentlyContinue
 			""");
 
-		var r = await Vhmgr.RunAsync(Guest, $"logs --since install --output \"{logDest}\"");
+		var r = await Vhdx.RunAsync(Guest, $"logs --since install --output \"{logDest}\"");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr logs --output` returned {r.ExitCode}. stderr: {r.StderrText}");
+			$"`vhdx logs --output` returned {r.ExitCode}. stderr: {r.StderrText}");
 		// LogsCommand prints "Wrote N event(s) to <path>" to stdout when
 		// --output is used. Either the file exists or that line is present.
 		await GuestFs.AssertFileExistsAsync(Guest, logDest);
@@ -52,9 +52,9 @@ public sealed class Logs_Tests : InstalledFixtureBase
 		// The CLI doc-string lists "15m", "2h", "3d" as accepted durations.
 		// Just `1h` here — long enough to cover the snapshot's
 		// install/boot window which is well under an hour old.
-		var r = await Vhmgr.RunAsync(Guest, "logs --since 1h");
+		var r = await Vhdx.RunAsync(Guest, "logs --since 1h");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr logs --since 1h` returned {r.ExitCode}. stderr: {r.StderrText}");
+			$"`vhdx logs --since 1h` returned {r.ExitCode}. stderr: {r.StderrText}");
 	}
 }

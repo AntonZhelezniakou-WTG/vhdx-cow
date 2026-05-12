@@ -91,10 +91,10 @@ public sealed class Upgrade_Tests : InstalledFixtureBase
 		// The CLI was built with /p:Version=<bumped>, so the EXE's FileVersion
 		// is the bumped version padded out to 4 components ("0.2.1" → "0.2.1.0").
 		var fileVersion = await Guest.InvokeJsonAsync<string>("""
-			(Get-Item 'C:\Program Files\VhdxManager\Cli\vhmgr.exe').VersionInfo.FileVersion
+			(Get-Item 'C:\Program Files\VhdxManager\Cli\vhdx.exe').VersionInfo.FileVersion
 			""");
 		fileVersion.Should().StartWith(bumpedMsi.BumpedVersion,
-			$"vhmgr.exe FileVersion should match the upgraded version " +
+			$"vhdx.exe FileVersion should match the upgraded version "+
 			$"({bumpedMsi.BumpedVersion}); got '{fileVersion}'. If this fails the upgrade " +
 			"didn't actually swap the CLI binary — check the msiexec log.");
 	}
@@ -141,7 +141,7 @@ public sealed class Upgrade_Tests : InstalledFixtureBase
 		// The PATH entry's CliFolder resolves to the same physical path before
 		// and after upgrade, so the registry value should remain stable.
 		// A fresh PSSession reads the up-to-date machine PATH from the registry.
-		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhmgr.exe");
+		var onPath = await GuestFs.IsOnPathAsync(Guest, "vhdx.exe");
 		onPath.Should().BeTrue(
 			"upgrade must leave the CLI directory on the machine PATH");
 	}

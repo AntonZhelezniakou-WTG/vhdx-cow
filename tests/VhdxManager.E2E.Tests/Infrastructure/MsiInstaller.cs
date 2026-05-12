@@ -49,7 +49,7 @@ public static class MsiInstaller
 		// surface the LogPath/LogTail in failure messages; tests that try to
 		// actually read the log file (e.g. Upgrade_Tests) hit the missing path.
 		var script = $$"""
-			$log = Join-Path $env:TEMP ('vhmgr-msi-{{verb}}-' + [Guid]::NewGuid().ToString('N') + '.log')
+			$log = Join-Path $env:TEMP ('vhdx-msi-{{verb}}-' + [Guid]::NewGuid().ToString('N') + '.log')
 			$argString = '{{operation}} /qn /norestart /l*v "' + $log + '"'
 			$proc = Start-Process -FilePath 'msiexec.exe' `
 			    -ArgumentList $argString `

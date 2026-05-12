@@ -5,7 +5,7 @@ using VhdxManager.E2E.Tests.Infrastructure;
 namespace VhdxManager.E2E.Tests.Cli;
 
 /// <summary>
-/// Verifies that <c>vhmgr create --add-defender-exclusion true</c> actually
+/// Verifies that <c>vhdx create --add-defender-exclusion true</c> actually
 /// registers the VHDX path via <c>Add-MpPreference -ExclusionPath</c> and that
 /// the exclusion is visible through <c>Get-MpPreference</c> inside the guest VM.
 ///
@@ -70,12 +70,12 @@ public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 				"Windows Defender is not active on this VM — " +
 				"start WinDefend (sc start WinDefend) and re-run to exercise the exclusion path");
 
-		var r = await Vhmgr.RunAsync(Guest,
+		var r = await Vhdx.RunAsync(Guest,
 			$"create --path \"{VhdxPath}\" --size 64M --label e2edef " +
 			$"--mount \"{MountPath}\" --filesystem NTFS --add-defender-exclusion true");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr create --add-defender-exclusion true` returned {r.ExitCode}.\n" +
+			$"`vhdx create --add-defender-exclusion true` returned {r.ExitCode}.\n" +
 			$"stdout: {r.StdoutText}\nstderr: {r.StderrText}");
 
 		// When Group Policy (or tamper protection) blocks Add-MpPreference the CLI
@@ -108,7 +108,7 @@ public sealed class DefenderExclusion_Tests : InstalledFixtureBase
 			""");
 
 		found.Should().BeTrue(
-			$"`vhmgr create --add-defender-exclusion true` must add {VhdxPath} to Defender ExclusionPath via Add-MpPreference before returning. " +
+			$"`vhdx create --add-defender-exclusion true` must add {VhdxPath} to Defender ExclusionPath via Add-MpPreference before returning. "+
 			"Check DefenderExclusionManager.AddExclusionCore in VhdxManager.Service if this assertion fails — the VHDX was created but the exclusion was not registered.");
 	}
 }

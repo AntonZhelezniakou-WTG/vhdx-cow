@@ -4,7 +4,7 @@ VHDX management tool for Windows — create, mount, and merge virtual disks from
 
 Useful for any workflow that benefits from a private NTFS or ReFS volume backed by a `.vhdx` file: isolated build outputs, ephemeral scratch spaces, portable dependency caches, copy-on-write snapshots, and similar. The tool itself is agnostic — it just manages VHDXes.
 
-Mounting a VHDX to an NTFS folder requires administrator privileges. A Windows Service handles all privileged disk operations; a user-space CLI (`vhmgr`) communicates with it over a local gRPC/named-pipe channel.
+Mounting a VHDX to an NTFS folder requires administrator privileges. A Windows Service handles all privileged disk operations; a user-space CLI (`vhdx`) communicates with it over a local gRPC/named-pipe channel.
 
 ---
 
@@ -130,43 +130,43 @@ The service rejects any request whose paths fall outside these allow-lists.
 
 ```powershell
 # Check service connectivity
-vhmgr ping
+vhdx ping
 
 # Create a standalone VHDX, format it, and mount it to a folder
-vhmgr create --path D:\VhdxDisks\data.vhdx --size 50G --label data `
+vhdx create --path D:\VhdxDisks\data.vhdx --size 50G --label data `
              --mount D:\MountPoints\data
 
 # `create --parent` is equivalent to `init`
-vhmgr create --parent D:\VhdxDisks\Parents\base.vhdx `
+vhdx create --parent D:\VhdxDisks\Parents\base.vhdx `
              --path   D:\VhdxDisks\Children\snap2.vhdx `
              --mount  D:\MountPoints\snap2
 
 # Convert an existing folder into a VHDX-backed folder
-vhmgr convert --folder D:\Data --vhdx D:\VhdxDisks\data.vhdx --size 100G
+vhdx convert --folder D:\Data --vhdx D:\VhdxDisks\data.vhdx --size 100G
 
 # Unmount + detach + delete the file
-vhmgr delete D:\VhdxDisks\data.vhdx
+vhdx delete D:\VhdxDisks\data.vhdx
 
 # List all active mounts
-vhmgr list
+vhdx list
 
 # Show status of a specific mounted disk
-vhmgr status --child D:\VhdxDisks\Children\snap1.vhdx
+vhdx status --child D:\VhdxDisks\Children\snap1.vhdx
 
 # Discard all changes in a child disk — restore to parent state
-vhmgr reset --child D:\VhdxDisks\Children\snap1.vhdx
+vhdx reset --child D:\VhdxDisks\Children\snap1.vhdx
 
 # Detach and delete a child disk
-vhmgr cleanup --child D:\VhdxDisks\Children\snap1.vhdx
+vhdx cleanup --child D:\VhdxDisks\Children\snap1.vhdx
 
 # Merge an overlay into its parent and recreate all children from the new baseline
-vhmgr publish --overlay D:\VhdxDisks\overlay.vhdx
+vhdx publish --overlay D:\VhdxDisks\overlay.vhdx
 
 # Attach + mount an existing VHDX without creating it
-vhmgr mount --path D:\VhdxDisks\data.vhdx --mount D:\MountPoints\data
+vhdx mount --path D:\VhdxDisks\data.vhdx --mount D:\MountPoints\data
 
 # Unmount + detach, keeping the file on disk
-vhmgr unmount --path D:\VhdxDisks\data.vhdx
+vhdx unmount --path D:\VhdxDisks\data.vhdx
 ```
 
 #### Global options
@@ -195,7 +195,7 @@ The `publish` command supports a copy-on-write pattern where multiple mounted ch
                 ┌────────────────┐
                 │  overlay.vhdx  │  ← accumulate changes here
                 └──────┬─────────┘
-                       │  vhmgr publish --overlay overlay.vhdx
+                       │  vhdx publish --overlay overlay.vhdx
                        ▼
                parent VHDX updated
                all children recreated

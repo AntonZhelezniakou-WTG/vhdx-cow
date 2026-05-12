@@ -23,7 +23,7 @@
 			(old-then-new) Windows Installer sees the shared components as
 			"Unchanged" between the two installs, skips InstallFiles for them
 			during the new install, then deletes them as part of removing the
-			old product — leaving the install with no `vhmgr.exe` or
+			old product — leaving the install with no `vhdx.exe` or
 			`VhdxManager.Service.exe`. "afterInstallExecute" installs the new
 			version first; the subsequent RemoveExistingProducts sees the shared
 			components as still referenced (by the new install) and leaves them
@@ -76,7 +76,7 @@
 		</Feature>
 
 		<Feature Id="CliFeature"
-			Title="vhmgr CLI"
+			Title="vhdx CLI"
 			Description="Command-line tool (added to PATH)"
 			Level="1"
 			AllowAbsent="yes">
@@ -102,7 +102,7 @@
 		<UIRef Id="WixUI_ErrorProgressText" />
 		<WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)license.rtf" />
 		<Property Id="WIXUI_EXITDIALOGOPTIONALTEXT"
-			Value="The VhdxManager service is registered and the 'vhmgr' CLI has been added to PATH. Open a new console and run 'vhmgr ping' to verify." />
+			Value="The VhdxManager service is registered and the 'vhdx' CLI has been added to PATH. Open a new console and run 'vhdx ping' to verify." />
 
 	</Package>
 

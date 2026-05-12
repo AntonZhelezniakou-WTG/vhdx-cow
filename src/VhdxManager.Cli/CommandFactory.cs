@@ -228,7 +228,7 @@ static class CommandFactory
 
 		// --- delete (unmount + detach + delete file) ---
 		// Path is a positional argument so the natural form works:
-		//     vhmgr delete C:\path\to\file.vhdx
+		//     vhdx delete C:\path\to\file.vhdx
 		var deleteVhdxArg = new Argument<string>("path") { Description = "Path to the VHDX file to delete" };
 		var deleteCommand = new Command("delete", "Unmount + detach + delete the VHDX file.")
 		{

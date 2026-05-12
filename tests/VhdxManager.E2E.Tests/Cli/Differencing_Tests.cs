@@ -12,7 +12,7 @@ namespace VhdxManager.E2E.Tests.Cli;
 /// <c>[Order]</c> with <c>Assert.Inconclusive</c> on prereq failure so a
 /// downstream failure doesn't echo the same root cause six times.
 ///
-/// <para>The parent VHDX is created with <c>vhmgr create</c> but NOT mounted
+/// <para>The parent VHDX is created with <c>vhdx create</c> but NOT mounted
 /// (no <c>--mount</c>) — it just needs to exist on disk. <c>init</c> then
 /// produces a writable child from it and mounts the child.</para>
 /// </summary>
@@ -44,7 +44,7 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 		// (leave blank to skip)")` and the CLI hangs forever reading
 		// stdin (redirected to a temp file, never closed) — observed as a
 		// 10+ minute timeout. Empty string short-circuits the prompt.
-		var create = await Vhmgr.RunAsync(Guest,
+		var create = await Vhdx.RunAsync(Guest,
 			$"create --path \"{ParentPath}\" --size 256M --label parent --mount \"\" " +
 			$"--filesystem NTFS --add-defender-exclusion false");
 		// 256 MB: large enough to format reliably (we observed transient
@@ -58,12 +58,12 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 	[Test, Order(1)]
 	public async Task Init_Creates_Child_And_Mounts_It()
 	{
-		var r = await Vhmgr.RunAsync(Guest,
+		var r = await Vhdx.RunAsync(Guest,
 			$"init --parent \"{ParentPath}\" --child \"{ChildPath}\" --mount \"{MountPath}\" " +
 			$"--add-defender-exclusion false");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr init` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
+			$"`vhdx init` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
 		// InitCommand prints "Volume GUID: <path>" on success.
 		r.StdoutText.Should().Contain("Volume GUID",
 			$"init should report the mounted volume's GUID. stdout: {r.StdoutText}");
@@ -86,9 +86,9 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 		// presence-of-metadata check is the actually-meaningful assertion:
 		// status returning empty fields would mean the child isn't in the
 		// state store at all (which is what Reset/Cleanup rely on).
-		var r = await Vhmgr.RunAsync(Guest, $"status --child \"{ChildPath}\"");
+		var r = await Vhdx.RunAsync(Guest, $"status --child \"{ChildPath}\"");
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr status` returned {r.ExitCode}. stderr: {r.StderrText}");
+			$"`vhdx status` returned {r.ExitCode}. stderr: {r.StderrText}");
 
 		r.StdoutText.Should().Contain("parent.vhdx",
 			$"status should report the parent path. stdout: {r.StdoutText}");
@@ -109,9 +109,9 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 		var dirtyBefore = await GuestFs.ExistsAsync(Guest, $@"{MountPath}\dirty.txt");
 		dirtyBefore.Should().BeTrue("pre-reset write should land inside the child's mount");
 
-		var r = await Vhmgr.RunAsync(Guest, $"reset --child \"{ChildPath}\"");
+		var r = await Vhdx.RunAsync(Guest, $"reset --child \"{ChildPath}\"");
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr reset` returned {r.ExitCode}. stderr: {r.StderrText}");
+			$"`vhdx reset` returned {r.ExitCode}. stderr: {r.StderrText}");
 
 		var dirtyAfter = await GuestFs.ExistsAsync(Guest, $@"{MountPath}\dirty.txt");
 		dirtyAfter.Should().BeFalse("reset should discard everything written to the child since init");
@@ -122,9 +122,9 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 	{
 		// `cleanup --child` is the differencing-workflow companion to
 		// standalone `delete`: unmount + detach + delete child VHDX.
-		var r = await Vhmgr.RunAsync(Guest, $"cleanup --child \"{ChildPath}\"");
+		var r = await Vhdx.RunAsync(Guest, $"cleanup --child \"{ChildPath}\"");
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr cleanup` returned {r.ExitCode}. stderr: {r.StderrText}");
+			$"`vhdx cleanup` returned {r.ExitCode}. stderr: {r.StderrText}");
 
 		var exists = await GuestFs.ExistsAsync(Guest, ChildPath);
 		exists.Should().BeFalse("cleanup should delete the child VHDX file");
@@ -137,8 +137,8 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 	[Test, Order(5)]
 	public async Task Create_With_Parent_Produces_Mounted_Child()
 	{
-		// `vhmgr create --parent X --path Y --mount Z` is functionally
-		// equivalent to `vhmgr init --parent X --child Y --mount Z` —
+		// `vhdx create --parent X --path Y --mount Z` is functionally
+		// equivalent to `vhdx init --parent X --child Y --mount Z` —
 		// it routes through the same `CreateChild` RPC. Runs after
 		// `Cleanup_Unmounts_And_Removes_Child` so the child path is free.
 		//
@@ -146,12 +146,12 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 		// --filesystem) are deliberately omitted: the child branch rejects
 		// them up-front, so passing them here would just shadow the real
 		// assertion we want (that the RPC was reached and succeeded).
-		var r = await Vhmgr.RunAsync(Guest,
+		var r = await Vhdx.RunAsync(Guest,
 			$"create --parent \"{ParentPath}\" --path \"{ChildPath}\" --mount \"{MountPath}\" " +
 			$"--add-defender-exclusion false");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr create --parent` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
+			$"`vhdx create --parent` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
 		r.StdoutText.Should().Contain("Volume GUID",
 			$"create --parent should report the mounted volume's GUID. stdout: {r.StdoutText}");
 
@@ -159,13 +159,13 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 
 		// Sanity: the new child is in the managed-children registry —
 		// `status` returns 0 and references the parent.
-		var status = await Vhmgr.RunAsync(Guest, $"status --child \"{ChildPath}\"");
+		var status = await Vhdx.RunAsync(Guest, $"status --child \"{ChildPath}\"");
 		status.Succeeded.Should().BeTrue(
 			$"`status` should succeed after create --parent. stderr: {status.StderrText}");
 		status.StdoutText.Should().Contain("parent.vhdx");
 
 		// Tidy up so the test is idempotent w.r.t. the per-MSI snapshot.
-		var cleanup = await Vhmgr.RunAsync(Guest, $"cleanup --child \"{ChildPath}\"");
+		var cleanup = await Vhdx.RunAsync(Guest, $"cleanup --child \"{ChildPath}\"");
 		cleanup.Succeeded.Should().BeTrue(
 			$"post-test cleanup failed (exit {cleanup.ExitCode}): {cleanup.StderrText}");
 	}
@@ -178,7 +178,7 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 		// CLI fails earlier with a clearer message. Pass `--mount ""`
 		// (the same empty-string convention used elsewhere in E2E to
 		// suppress the interactive prompt) to exercise the validation.
-		var r = await Vhmgr.RunAsync(Guest,
+		var r = await Vhdx.RunAsync(Guest,
 			$"create --parent \"{ParentPath}\" --path \"{ChildPath}\" --mount \"\" " +
 			$"--add-defender-exclusion false");
 
