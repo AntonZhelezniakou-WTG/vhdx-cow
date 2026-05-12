@@ -16,8 +16,8 @@ overlay.vhdx  (differencing, mutable)
       ▼
 parent.vhdx  (base image, READ-ONLY)
       │
- ┌────┴────┐
- ▼         ▼
+ ┌────┴────────────┐
+ ▼                 ▼
 child-A.vhdx   child-B.vhdx
 mount-A/       mount-B/
 ```
@@ -197,9 +197,9 @@ vhmgr convert --folder D:\Data --vhdx D:\VhdxDisks\data.vhdx --size 100G
 The `publish` command supports a copy-on-write pattern where multiple mounted children share a single read-only parent:
 
 ```
-                ┌──────────────┐
-                │  overlay.vhdx│  ← accumulate changes here
-                └──────┬───────┘
+                ┌────────────────┐
+                │  overlay.vhdx  │  ← accumulate changes here
+                └──────┬─────────┘
                        │  vhmgr publish --overlay overlay.vhdx
                        ▼
                parent VHDX updated
