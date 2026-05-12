@@ -9,11 +9,8 @@ namespace VhdxManager.Cli;
 /// <list type="number">
 /// <item>explicit CLI flag wins</item>
 /// <item>else service-side persisted default (set via <c>vhdx config set</c>)</item>
-/// <item>else interactive prompt (<see cref="InteractivePrompt.AskBool"/>)</item>
+/// <item>else <see langword="false"/> — no prompt</item>
 /// </list>
-/// In non-interactive mode the prompt throws — callers are then expected to
-/// either set a service default or pass the flag explicitly. This matches the
-/// behaviour of every other interactive option in the CLI.
 /// </summary>
 static class DefenderExclusionResolver
 {
@@ -37,8 +34,6 @@ static class DefenderExclusionResolver
 			return settings.DefaultAddDefenderExclusion;
 		}
 
-		return InteractivePrompt.AskBool(
-			"Add the new VHDX file to Windows Defender exclusions?",
-			defaultValue: false);
+		return false;
 	}
 }
