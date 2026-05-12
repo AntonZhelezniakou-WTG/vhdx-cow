@@ -5,12 +5,6 @@
 		<SelfContained>true</SelfContained>
 		<PublishSingleFile>false</PublishSingleFile>
 		<PublishTrimmed>false</PublishTrimmed>
-		<!--
-			AssemblyName decouples the on-disk binary name from the .csproj file name:
-			the project file is still VhdxManager.Service.csproj (kept for namespace
-			continuity) but the produced executable is VhdxManager.Service.exe so
-			Task Manager / SCM / Event Viewer never display "Cow".
-		-->
 		<AssemblyName>VhdxManager.Service</AssemblyName>
 	</PropertyGroup>
 
