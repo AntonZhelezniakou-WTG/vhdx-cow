@@ -136,7 +136,7 @@ vhmgr ping
 vhmgr create --path D:\VhdxDisks\data.vhdx --size 50G --label data `
              --mount D:\MountPoints\data
 
-# `create --parent` is equivalent to `init`
+# Create a differencing (child) VHDX from a parent and mount it
 vhmgr create --parent D:\VhdxDisks\Parents\base.vhdx `
              --path   D:\VhdxDisks\Children\snap2.vhdx `
              --mount  D:\MountPoints\snap2

@@ -5,7 +5,7 @@ using VhdxManager.E2E.Tests.Infrastructure;
 namespace VhdxManager.E2E.Tests.Cli;
 
 /// <summary>
-/// Full differencing-VHDX lifecycle: create a parent → <c>init</c> a child off
+/// Full differencing-VHDX lifecycle: create a parent → <c>create --parent</c> a child off
 /// of it → <c>status</c> reports the managed mount → <c>reset</c> discards
 /// child changes → <c>publish</c> merges overlay into parent → <c>cleanup</c>
 /// removes the child. One VM boot covers the whole sequence; tests run in
@@ -13,7 +13,7 @@ namespace VhdxManager.E2E.Tests.Cli;
 /// downstream failure doesn't echo the same root cause six times.
 ///
 /// <para>The parent VHDX is created with <c>vhmgr create</c> but NOT mounted
-/// (no <c>--mount</c>) — it just needs to exist on disk. <c>init</c> then
+/// (no <c>--mount</c>) — it just needs to exist on disk. <c>create --parent</c> then
 /// produces a writable child from it and mounts the child.</para>
 /// </summary>
 [TestFixture]
@@ -36,7 +36,7 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 			""");
 
 		// Create the parent VHDX up front (used by every test below). We
-		// keep the parent detached — `init` will produce a writable child
+		// keep the parent detached — `create --parent` will produce a writable child
 		// from it; the parent itself must remain unmounted for the
 		// differencing semantics to work.
 		//
@@ -58,17 +58,17 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 	}
 
 	[Test, Order(1)]
-	public async Task Init_Creates_Child_And_Mounts_It()
+	public async Task Create_With_Parent_Creates_Child_And_Mounts_It()
 	{
 		var r = await Vhmgr.RunAsync(Guest,
-			$"init --parent \"{ParentPath}\" --child \"{ChildPath}\" --mount \"{MountPath}\" " +
+			$"create --parent \"{ParentPath}\" --path \"{ChildPath}\" --mount \"{MountPath}\" " +
 			$"--add-defender-exclusion false");
 
 		r.Succeeded.Should().BeTrue(
-			$"`vhmgr init` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
-		// InitCommand prints "Volume GUID: <path>" on success.
+			$"`vhmgr create --parent` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
+		// CreateCommand prints "Volume GUID: <path>" on success.
 		r.StdoutText.Should().Contain("Volume GUID",
-			$"init should report the mounted volume's GUID. stdout: {r.StdoutText}");
+			$"create --parent should report the mounted volume's GUID. stdout: {r.StdoutText}");
 
 		// Child VHDX file must now exist on disk.
 		await GuestFs.AssertFileExistsAsync(Guest, ChildPath);
@@ -78,11 +78,11 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 	public async Task Status_Reports_Managed_Child_Metadata()
 	{
 		// Unlike a standalone VHDX (see StandaloneVhdx_Tests note), a child
-		// created via `init` IS in the service's managed-children registry,
+		// created via `create --parent` IS in the service's managed-children registry,
 		// so `status --child` should fill in Mount path / Parent / Volume GUID.
 		//
 		// We do NOT assert `Attached: True` — empirically the service reports
-		// "Attached: False" even for a live mounted child once init returns
+		// "Attached: False" even for a live mounted child once create --parent returns
 		// (the service drops its OpenVirtualDisk handle; the mount stays
 		// live through the OS volume manager, independently). The
 		// presence-of-metadata check is the actually-meaningful assertion:
@@ -116,7 +116,7 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 			$"`vhmgr reset` returned {r.ExitCode}. stderr: {r.StderrText}");
 
 		var dirtyAfter = await GuestFs.ExistsAsync(Guest, $@"{MountPath}\dirty.txt");
-		dirtyAfter.Should().BeFalse("reset should discard everything written to the child since init");
+		dirtyAfter.Should().BeFalse("reset should discard everything written to the child since create --parent");
 	}
 
 	[Test, Order(4)]
@@ -139,9 +139,8 @@ public sealed class Differencing_Tests : InstalledFixtureBase
 	[Test, Order(5)]
 	public async Task Create_With_Parent_Produces_Mounted_Child()
 	{
-		// `vhmgr create --parent X --path Y --mount Z` is functionally
-		// equivalent to `vhmgr init --parent X --child Y --mount Z` —
-		// it routes through the same `CreateChild` RPC. Runs after
+		// `vhmgr create --parent X --path Y --mount Z` routes through the
+		// `CreateChild` RPC. Runs after
 		// `Cleanup_Unmounts_And_Removes_Child` so the child path is free.
 		//
 		// Standalone-only flags (--size / --label / --dynamic / --fixed /

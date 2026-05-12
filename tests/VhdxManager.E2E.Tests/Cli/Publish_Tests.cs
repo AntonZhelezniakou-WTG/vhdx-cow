@@ -8,9 +8,9 @@ namespace VhdxManager.E2E.Tests.Cli;
 /// Full <c>vhmgr publish</c> lifecycle against two registered children:
 /// <list type="number">
 /// <item>Create a standalone parent VHDX (no mount).</item>
-/// <item><c>vhmgr init</c> a managed <em>child</em> from the parent — represents
+/// <item><c>vhmgr create --parent</c> a managed <em>child</em> from the parent — represents
 ///   a worker that will be recreated after the publish.</item>
-/// <item><c>vhmgr init</c> an <em>overlay</em> from the same parent — this is
+/// <item><c>vhmgr create --parent</c> an <em>overlay</em> from the same parent — this is
 ///   the staging child whose changes will be merged into the parent.</item>
 /// <item>Write a marker file to the overlay's mount path.</item>
 /// <item><c>vhmgr publish --overlay &lt;overlay.vhdx&gt;</c> — merges the
@@ -75,7 +75,7 @@ public sealed class Publish_Tests : InstalledFixtureBase
 		// Managed child — will be detached + deleted + recreated fresh after publish.
 		// Represents a "worker" that always gets a clean slate when the parent updates.
 		var child = await Vhmgr.RunAsync(Guest,
-			$"init --parent \"{ParentPath}\" --child \"{ChildPath}\" " +
+			$"create --parent \"{ParentPath}\" --path \"{ChildPath}\" " +
 			$"--mount \"{ChildMount}\" --add-defender-exclusion false");
 		Assert.That(child.Succeeded, Is.True,
 			$"child-VHDX prereq creation failed (exit {child.ExitCode}): {child.StderrText}");
@@ -84,7 +84,7 @@ public sealed class Publish_Tests : InstalledFixtureBase
 		// parent by publish. It is also a registered child (in the state store), so
 		// after publish it too is recreated fresh from the updated parent.
 		var overlay = await Vhmgr.RunAsync(Guest,
-			$"init --parent \"{ParentPath}\" --child \"{OverlayPath}\" " +
+			$"create --parent \"{ParentPath}\" --path \"{OverlayPath}\" " +
 			$"--mount \"{OverlayMount}\" --add-defender-exclusion false");
 		Assert.That(overlay.Succeeded, Is.True,
 			$"overlay-VHDX prereq creation failed (exit {overlay.ExitCode}): {overlay.StderrText}");

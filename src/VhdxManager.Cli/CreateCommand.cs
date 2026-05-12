@@ -206,8 +206,8 @@ static class CreateCommand
 	}
 
 	/// <summary>
-	/// `vhmgr create --parent …` branch: create a differencing child VHDX via
-	/// the same RPC as `vhmgr init`. Per design, --mount is mandatory in this
+	/// `vhmgr create --parent …` branch: create a differencing child VHDX.
+	/// Per design, --mount is mandatory in this
 	/// branch (we do not silently substitute prompts) and every standalone-only
 	/// option is rejected up-front so the user gets a fast, explicit error
 	/// rather than seeing flags silently dropped on the floor.
