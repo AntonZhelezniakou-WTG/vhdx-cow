@@ -138,6 +138,16 @@ vhmgr init --parent D:\VhdxDisks\Parents\main.vhdx `
            --child  D:\VhdxDisks\Children\wt1.vhdx `
            --mount  D:\GitHub\myrepo-wt1\bin
 
+# `create --parent` is equivalent to `init` — produces a differencing child
+# off the given parent and mounts it. `--mount` is required in this form.
+vhmgr create --parent D:\VhdxDisks\Parents\main.vhdx `
+             --path   D:\VhdxDisks\Children\wt1.vhdx `
+             --mount  D:\GitHub\myrepo-wt1\bin
+
+# `create` without `--parent` builds a standalone VHDX (size/format/optional mount).
+vhmgr create --path D:\VhdxDisks\standalone.vhdx --size 50G --label data `
+             --mount D:\some\folder
+
 # List all active mounts
 vhmgr list
 

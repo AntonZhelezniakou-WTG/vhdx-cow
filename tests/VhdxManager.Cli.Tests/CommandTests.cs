@@ -292,4 +292,124 @@ public class CommandTests
 
 		capturedTimeout.Should().Be(TimeSpan.FromSeconds(30));
 	}
+
+	// ─── create --parent (child) ─────────────────────────────────────────────
+
+	[Test]
+	public async Task Create_WithParent_CallsCreateChildAsync_ExitCode0()
+	{
+		mockClient.GetSettingsAsync(Arg.Any<CancellationToken>())
+			.Returns(new GetSettingsReply());
+		mockClient.CreateChildAsync(
+				Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+				Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
+			.Returns(new CreateChildReply { Success = true, VolumeGuidPath = @"\\?\Volume{abcd}\" });
+
+		var (exitCode, stdout, _) = await InvokeWithOutput(
+			@"create --parent C:\p.vhdx --path C:\c.vhdx --mount C:\m --add-defender-exclusion false");
+
+		exitCode.Should().Be(0);
+		stdout.Should().Contain(@"\\?\Volume{abcd}\");
+		await mockClient.Received(1).CreateChildAsync(
+			@"C:\p.vhdx", @"C:\c.vhdx", @"C:\m", false,
+			Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>());
+		// Standalone RPC must not be used in the child branch.
+		await mockClient.DidNotReceive().CreateVhdxAsync(
+			Arg.Any<string>(), Arg.Any<long>(), Arg.Any<bool>(), Arg.Any<string>(),
+			Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+			Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task Create_WithParent_ServerFailure_ExitCode1()
+	{
+		mockClient.GetSettingsAsync(Arg.Any<CancellationToken>())
+			.Returns(new GetSettingsReply());
+		mockClient.CreateChildAsync(
+				Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+				Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
+			.Returns(new CreateChildReply { Success = false, ErrorMessage = "parent missing" });
+
+		var (exitCode, _, stderr) = await InvokeWithOutput(
+			@"create --parent C:\p.vhdx --path C:\c.vhdx --mount C:\m --add-defender-exclusion false");
+
+		exitCode.Should().Be(1);
+		stderr.Should().Contain("parent missing");
+	}
+
+	[Test]
+	public async Task Create_WithParent_MissingMount_ExitCode1()
+	{
+		var (exitCode, _, stderr) = await InvokeWithOutput(
+			@"create --parent C:\p.vhdx --path C:\c.vhdx --add-defender-exclusion false");
+
+		exitCode.Should().Be(1);
+		stderr.Should().Contain("--mount is required");
+		await mockClient.DidNotReceive().CreateChildAsync(
+			Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+			Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task Create_WithParent_EmptyMount_ExitCode1()
+	{
+		// E2E callers pass `--mount ""` to mean "no mount" — must still be
+		// rejected in the child branch, not silently treated as missing.
+		var (exitCode, _, stderr) = await InvokeWithOutput(
+			@"create --parent C:\p.vhdx --path C:\c.vhdx --mount """" --add-defender-exclusion false");
+
+		exitCode.Should().Be(1);
+		stderr.Should().Contain("--mount is required");
+	}
+
+	[Test]
+	public async Task Create_WithParent_MissingPath_ExitCode1()
+	{
+		var (exitCode, _, stderr) = await InvokeWithOutput(
+			@"create --parent C:\p.vhdx --mount C:\m --add-defender-exclusion false");
+
+		exitCode.Should().Be(1);
+		stderr.Should().Contain("--path is required");
+	}
+
+	[TestCase("--size 1G")]
+	[TestCase("--label foo")]
+	[TestCase("--dynamic true")]
+	[TestCase("--fixed true")]
+	[TestCase("--filesystem NTFS")]
+	public async Task Create_WithParent_RejectsStandaloneOnlyFlags(string extraFlag)
+	{
+		var (exitCode, _, stderr) = await InvokeWithOutput(
+			$@"create --parent C:\p.vhdx --path C:\c.vhdx --mount C:\m {extraFlag} --add-defender-exclusion false");
+
+		exitCode.Should().Be(1);
+		stderr.Should().Contain("not valid with --parent");
+		await mockClient.DidNotReceive().CreateChildAsync(
+			Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+			Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>());
+	}
+
+	[Test]
+	public async Task Create_WithParent_UsesServiceDefaultDefender_WhenFlagOmitted()
+	{
+		// HasDefault=true with value=true → resolver returns true without prompting.
+		mockClient.GetSettingsAsync(Arg.Any<CancellationToken>())
+			.Returns(new GetSettingsReply
+			{
+				HasDefaultAddDefenderExclusion = true,
+				DefaultAddDefenderExclusion = true,
+			});
+		mockClient.CreateChildAsync(
+				Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+				Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>())
+			.Returns(new CreateChildReply { Success = true });
+
+		var (exitCode, _, _) = await InvokeWithOutput(
+			@"create --parent C:\p.vhdx --path C:\c.vhdx --mount C:\m");
+
+		exitCode.Should().Be(0);
+		await mockClient.Received(1).CreateChildAsync(
+			@"C:\p.vhdx", @"C:\c.vhdx", @"C:\m", true,
+			Arg.Any<Action<ProgressEvent>?>(), Arg.Any<CancellationToken>());
+	}
 }

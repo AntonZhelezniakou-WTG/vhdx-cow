@@ -65,7 +65,7 @@ WiX component layout — keep in sync when the installer changes):
 |---|---|---|---|
 | `BasicVerbs_Tests` (Order 10) | `ping`, `list` (empty), `--help`, `--version` | `installed-clean@<sha8>` | ~1 min |
 | `StandaloneVhdx_Tests` (Order 20) | `create`, `list`, `unmount`, `mount`, `delete` | `installed-clean@<sha8>` | ~2 min |
-| `Differencing_Tests` (Order 30) | `create` (parent), `init`, `status`, `reset`, `cleanup` | `installed-clean@<sha8>` | ~3 min |
+| `Differencing_Tests` (Order 30) | `create` (parent), `init`, `status`, `reset`, `cleanup`, `create --parent` | `installed-clean@<sha8>` | ~3 min |
 | `Convert_Tests` (Order 40) | `convert`, `list` | `installed-clean@<sha8>` | ~2 min |
 | `Logs_Tests` (Order 50) | `logs --since install`, `logs --output`, `logs --since 1h` | `installed-clean@<sha8>` | ~1 min |
 | `DefenderExclusion_Tests` (Order 60) | `create --add-defender-exclusion true`, `Get-MpPreference` assertion | `installed-clean@<sha8>` | ~1 min |

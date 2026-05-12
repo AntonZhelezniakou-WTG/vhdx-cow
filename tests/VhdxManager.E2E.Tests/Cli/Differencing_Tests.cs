@@ -134,4 +134,62 @@ New-Item -ItemType Directory -Path '{MountPath}' -Force | Out-Null
 		// model that cleanup doesn't touch the upstream image.
 		await GuestFs.AssertFileExistsAsync(Guest, ParentPath);
 	}
+
+	[Test, Order(5)]
+	public async Task Create_With_Parent_Produces_Mounted_Child()
+	{
+		// `vhmgr create --parent X --path Y --mount Z` is functionally
+		// equivalent to `vhmgr init --parent X --child Y --mount Z` —
+		// it routes through the same `CreateChild` RPC. Runs after
+		// `Cleanup_Unmounts_And_Removes_Child` so the child path is free.
+		//
+		// Standalone-only flags (--size / --label / --dynamic / --fixed /
+		// --filesystem) are deliberately omitted: the child branch rejects
+		// them up-front, so passing them here would just shadow the real
+		// assertion we want (that the RPC was reached and succeeded).
+		var r = await Vhmgr.RunAsync(Guest,
+			$"create --parent \"{ParentPath}\" --path \"{ChildPath}\" --mount \"{MountPath}\" " +
+			$"--add-defender-exclusion false");
+
+		r.Succeeded.Should().BeTrue(
+			$"`vhmgr create --parent` returned {r.ExitCode}.\nstdout: {r.StdoutText}\nstderr: {r.StderrText}");
+		r.StdoutText.Should().Contain("Volume GUID",
+			$"create --parent should report the mounted volume's GUID. stdout: {r.StdoutText}");
+
+		await GuestFs.AssertFileExistsAsync(Guest, ChildPath);
+
+		// Sanity: the new child is in the managed-children registry —
+		// `status` returns 0 and references the parent.
+		var status = await Vhmgr.RunAsync(Guest, $"status --child \"{ChildPath}\"");
+		status.Succeeded.Should().BeTrue(
+			$"`status` should succeed after create --parent. stderr: {status.StderrText}");
+		status.StdoutText.Should().Contain("parent.vhdx");
+
+		// Tidy up so the test is idempotent w.r.t. the per-MSI snapshot.
+		var cleanup = await Vhmgr.RunAsync(Guest, $"cleanup --child \"{ChildPath}\"");
+		cleanup.Succeeded.Should().BeTrue(
+			$"post-test cleanup failed (exit {cleanup.ExitCode}): {cleanup.StderrText}");
+	}
+
+	[Test, Order(6)]
+	public async Task Create_With_Parent_Rejects_Missing_Mount()
+	{
+		// The CLI is the only place this constraint is enforced — the
+		// `CreateChild` RPC itself rejects an empty mount path, but the
+		// CLI fails earlier with a clearer message. Pass `--mount ""`
+		// (the same empty-string convention used elsewhere in E2E to
+		// suppress the interactive prompt) to exercise the validation.
+		var r = await Vhmgr.RunAsync(Guest,
+			$"create --parent \"{ParentPath}\" --path \"{ChildPath}\" --mount \"\" " +
+			$"--add-defender-exclusion false");
+
+		r.Succeeded.Should().BeFalse(
+			"create --parent without a mount must fail fast");
+		r.ExitCode.Should().Be(1);
+		r.StderrText.Should().Contain("--mount is required");
+
+		var exists = await GuestFs.ExistsAsync(Guest, ChildPath);
+		exists.Should().BeFalse(
+			"validation must run before any disk operation, so no child file should be left behind");
+	}
 }
