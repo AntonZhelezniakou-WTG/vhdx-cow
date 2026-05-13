@@ -64,4 +64,5 @@ public readonly record struct VhdxInfo(
 	bool IsAttached,
 	string? ParentPath,
 	ulong VirtualSize,
-	ulong PhysicalSize);
+	ulong PhysicalSize,
+	string? PhysicalPath = null);

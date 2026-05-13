@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-		<DefaultVersion>0.2.0</DefaultVersion>
+		<DefaultVersion>0.2.5</DefaultVersion>
 		<Version Condition=" '$(Version)' == '' ">$(DefaultVersion)</Version>
 		<OutputName>VhdxManager-$(Version)</OutputName>
 		<InstallerPlatform>x64</InstallerPlatform>

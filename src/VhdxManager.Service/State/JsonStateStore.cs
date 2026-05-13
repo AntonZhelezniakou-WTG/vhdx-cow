@@ -17,6 +17,7 @@ public sealed class JsonStateStore : IStateStore
 	readonly string filePath;
 	readonly SemaphoreSlim @lock = new(1, 1);
 	readonly ILogger<JsonStateStore> logger;
+	readonly Task initialLoad;
 	List<MountedDiskState> cache = [];
 
 	public JsonStateStore(IConfiguration configuration, ILogger<JsonStateStore> logger)
@@ -31,13 +32,18 @@ public sealed class JsonStateStore : IStateStore
 
 		filePath = Environment.ExpandEnvironmentVariables(configuredPath);
 
-		_ = LoadAsync(CancellationToken.None);
+		// Kick off the initial load eagerly so the file read happens in parallel with
+		// the rest of host startup. Public methods await `initialLoad` before touching
+		// `cache`, so any caller — including MountReconciler running during host
+		// StartAsync — sees fully-populated state.
+		initialLoad = LoadAsync(CancellationToken.None);
 	}
 
 	public int GetActiveMountCount() => cache.Count;
 
 	public async Task<IReadOnlyList<MountedDiskState>> GetAllAsync(CancellationToken ct)
 	{
+		await initialLoad;
 		await @lock.WaitAsync(ct);
 		try
 		{
@@ -51,6 +57,7 @@ public sealed class JsonStateStore : IStateStore
 
 	public async Task<MountedDiskState?> GetAsync(string childVhdxPath, CancellationToken ct)
 	{
+		await initialLoad;
 		await @lock.WaitAsync(ct);
 		try
 		{
@@ -65,6 +72,7 @@ public sealed class JsonStateStore : IStateStore
 
 	public async Task AddAsync(MountedDiskState state, CancellationToken ct)
 	{
+		await initialLoad;
 		await @lock.WaitAsync(ct);
 		try
 		{
@@ -80,6 +88,7 @@ public sealed class JsonStateStore : IStateStore
 
 	public async Task RemoveAsync(string childVhdxPath, CancellationToken ct)
 	{
+		await initialLoad;
 		await @lock.WaitAsync(ct);
 		try
 		{

@@ -259,6 +259,7 @@ public sealed class VirtDiskManager(ILogger<VirtDiskManager> logger) : IVirtDisk
 
 		bool isAttached;
 		string? parentPath = null;
+		string? physicalPath = null;
 		try
 		{
 			using var handle = OpenDisk(
@@ -268,12 +269,13 @@ public sealed class VirtDiskManager(ILogger<VirtDiskManager> logger) : IVirtDisk
 			// Try to get the physical path — if it succeeds, the disk is attached
 			try
 			{
-				GetPhysicalPath(handle);
-				isAttached = true;
+				physicalPath = GetPhysicalPath(handle);
+				isAttached = !string.IsNullOrEmpty(physicalPath);
 			}
 			catch (Win32Exception)
 			{
 				isAttached = false;
+				physicalPath = null;
 			}
 		}
 		catch (Win32Exception)
@@ -289,7 +291,7 @@ public sealed class VirtDiskManager(ILogger<VirtDiskManager> logger) : IVirtDisk
 			physicalSize = (ulong)new FileInfo(vhdxPath).Length;
 		}
 
-		return new VhdxInfo(isAttached, parentPath, 0, physicalSize);
+		return new VhdxInfo(isAttached, parentPath, 0, physicalSize, physicalPath);
 	}, ct);
 
 	SafeFileHandle OpenDisk(

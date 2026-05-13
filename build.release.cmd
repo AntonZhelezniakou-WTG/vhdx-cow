@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 setlocal
 
 REM ====================================================================
@@ -29,7 +29,7 @@ REM  installed → installed-newer upgrade path).
 REM ====================================================================
 
 REM Capture the new version printed by the bump script.
-for /f "tokens=*" %%V in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Bump-Version.ps1"') do set VERSION=%%V
+for /f "tokens=*" %%V in ('pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Bump-Version.ps1"') do set VERSION=%%V
 if "%VERSION%"=="" (
     echo Failed to bump version - check scripts\Bump-Version.ps1 output.
     exit /b 1

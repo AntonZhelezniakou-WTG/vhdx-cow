@@ -134,9 +134,10 @@ Test-HyperVPrereqs
 $TemplatesDir = Join-Path $ScriptRoot 'templates'
 $AutounattendTemplate = Join-Path $TemplatesDir 'autounattend.xml.template'
 $FirstLogonScript = Join-Path $TemplatesDir 'FirstLogon.ps1'
+$SetupCompleteScript = Join-Path $TemplatesDir 'SetupComplete.cmd.template'
 $CredsPath = Join-Path $ScriptRoot '.vm-creds.json'
 
-foreach ($p in @($AutounattendTemplate, $FirstLogonScript)) {
+foreach ($p in @($AutounattendTemplate, $FirstLogonScript, $SetupCompleteScript)) {
 	if (-not (Test-Path -LiteralPath $p)) {
 		throw "Template missing: $p"
 	}
@@ -246,6 +247,21 @@ $xml | Out-File -LiteralPath (Join-Path $StagingDir 'autounattend.xml') -Encodin
 
 Copy-Item -LiteralPath $FirstLogonScript -Destination (Join-Path $StagingDir 'FirstLogon.ps1') -Force
 
+# SetupComplete.cmd is also templated — we need to inject the test user's
+# credentials so the cmd can create-or-reset the account itself, defending
+# against Win11 25H2 OOBE quirks where <LocalAccount> from autounattend.xml
+# can be silently ignored or applied with a different password.
+$cmd = Get-Content -LiteralPath $SetupCompleteScript -Raw
+$cmd = $cmd.Replace('{USERNAME}', $User)
+$cmd = $cmd.Replace('{PASSWORD}', $Password)
+# `cmd.exe` requires CRLF + ANSI/UTF-8-no-BOM. PowerShell 5.1's `Out-File -Encoding utf8`
+# writes a BOM which `cmd /c` tolerates but mis-renders the first line ("´╗┐@echo off"),
+# so explicitly use a no-BOM UTF-8 writer.
+[System.IO.File]::WriteAllText(
+	(Join-Path $StagingDir 'SetupComplete.cmd'),
+	$cmd,
+	(New-Object System.Text.UTF8Encoding($false)))
+
 Write-Host "Packing autounattend.iso..." -ForegroundColor Cyan
 New-IsoFromFolder -SourceFolder $StagingDir -IsoPath $AutounattendIsoPath -VolumeLabel 'UNATTEND'
 Write-Host "  → $AutounattendIsoPath" -ForegroundColor Green
@@ -312,7 +328,10 @@ catch {
 	Write-Host "  - Wrong image name in autounattend.xml (mismatch with ISO contents)."
 	Write-Host "    Pass -ImageName <name> and re-run with -Force."
 	Write-Host "  - VM didn't boot from DVD (BIOS startup order issue)."
-	Write-Host "  - autounattend.iso missing FirstLogon.ps1 (rerun with -Force)."
+	Write-Host "  - autounattend.iso missing FirstLogon.ps1 / SetupComplete.cmd (rerun with -Force)."
+	Write-Host "  - 'Guest rejected the configured credentials': SetupComplete.cmd"
+	Write-Host "    didn't run, or the test user wasn't created. Sign in to the VM"
+	Write-Host "    interactively and inspect C:\Setup\SetupComplete.log."
 	throw
 }
 

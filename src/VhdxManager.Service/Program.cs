@@ -6,6 +6,7 @@ using Serilog;
 using VhdxManager.Contracts;
 using VhdxManager.Service.Configuration;
 using VhdxManager.Service.Diagnostics;
+using VhdxManager.Service.Reconciliation;
 using VhdxManager.Service.Security;
 using VhdxManager.Service.Services;
 using VhdxManager.Service.State;
@@ -87,6 +88,9 @@ try
 	builder.Services.AddSingleton<PathValidator>();
 	builder.Services.AddSingleton<IDefenderExclusionManager, DefenderExclusionManager>();
 	builder.Services.AddSingleton<IServiceSettingsStore, ServiceSettingsStore>();
+
+	// Re-attach VHDXs and re-mount folders that were active before reboot.
+	builder.Services.AddHostedService<MountReconciler>();
 
 	var app = builder.Build();
 

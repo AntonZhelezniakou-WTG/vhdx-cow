@@ -61,9 +61,15 @@ public sealed class VmHost(string vmName, PowerShellRunner ps)
 		// Helpers.ps1::Wait-VmReady expects -Credential -TimeoutMinutes; we
 		// dot-source it via PowerShellRunner so the function is in scope.
 		var minutes = Math.Max(1, (int)Math.Ceiling(timeout.TotalMinutes));
+		// Build SecureString without ConvertTo-SecureString: that cmdlet lives
+		// in Microsoft.PowerShell.Security, which sometimes fails to load when
+		// PowerShell is spawned as a subprocess with -NoProfile.
+		var appendChars = string.Concat(
+			guestPassword.Select(c => $"\n\t$pw.AppendChar('{Escape(c.ToString())}')"));
 		var script = $"""
-			$pw = ConvertTo-SecureString '{Escape(guestPassword)}' -AsPlainText -Force
-			$cred = New-Object System.Management.Automation.PSCredential('{vmName}\{Escape(guestUser)}', $pw)
+			$pw = [System.Security.SecureString]::new(){appendChars}
+			$pw.MakeReadOnly()
+			$cred = [System.Management.Automation.PSCredential]::new('{vmName}\{Escape(guestUser)}', $pw)
 			Wait-VmReady -VmName '{vmName}' -Credential $cred -TimeoutMinutes {minutes} | Out-Null
 			""";
 		return ps.RunVoidAsync(script, ct);

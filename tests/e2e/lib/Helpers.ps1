@@ -446,7 +446,7 @@ function New-RandomPassword {
 	<#
 	.SYNOPSIS
 	  Generates a cryptographically-random password meeting Windows complexity
-	  policy (uppercase + lowercase + digit + symbol).
+	  policy (uppercase + lowercase + digit), while avoiding shell metacharacters.
 
 	.OUTPUTS
 	  String of length 22.
@@ -458,8 +458,9 @@ function New-RandomPassword {
 	[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
 	# Strip URL-unfriendly chars that also tend to confuse XML escaping.
 	$base = [Convert]::ToBase64String($bytes) -replace '[+/=]', ''
-	# Prefix guarantees the four character classes Windows wants.
-	return ('Vh!' + $base.Substring(0, 19))
+	# Prefix guarantees the character classes Windows wants without using
+	# punctuation that can be reinterpreted by cmd.exe during unattended setup.
+	return ('Vh1' + $base.Substring(0, 19))
 }
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -597,17 +598,28 @@ function Wait-VmReady {
 	.PARAMETER TimeoutMinutes
 	  Maximum total wait. Win11 unattended install + first boot typically
 	  takes 8-15 minutes on modern hardware.
+
+	.PARAMETER CredentialGracePeriodMinutes
+	  How long to tolerate "credential is invalid" responses before treating
+	  them as a fatal misconfiguration. Win11 25H2 OOBE brings WinRM up at
+	  the start of the OOBE pass, but the test user isn't reset to its final
+	  password until SetupComplete.cmd runs *after* OOBE — so a few minutes
+	  of credential-invalid responses are normal.
 	#>
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory)] [string] $VmName,
 		[Parameter(Mandatory)] [System.Management.Automation.PSCredential] $Credential,
 		[int] $TimeoutMinutes = 30,
-		[int] $PollIntervalSeconds = 15
+		[int] $PollIntervalSeconds = 15,
+		[int] $CredentialGracePeriodMinutes = 15
 	)
 
 	$deadline = (Get-Date).AddMinutes($TimeoutMinutes)
 	$poll = 0
+	# When did we first see "credential is invalid"? Used to bound how long
+	# we wait for SetupComplete.cmd to fix things.
+	$credBadSince = $null
 	Write-Host "Waiting for guest first-boot to complete (up to $TimeoutMinutes min)..." -ForegroundColor Cyan
 	while ((Get-Date) -lt $deadline) {
 		$poll++
@@ -615,6 +627,9 @@ function Wait-VmReady {
 			$ready = Invoke-Command -VMName $VmName -Credential $Credential -ErrorAction Stop -ScriptBlock {
 				Test-Path -LiteralPath 'C:\Setup\boot-complete.flag'
 			}
+			# Got through auth — clear the grace-period clock in case earlier
+			# polls had been failing with credential-invalid.
+			$credBadSince = $null
 			if ($ready) {
 				Write-Host "  Guest is ready (poll #$poll)." -ForegroundColor Green
 				return
@@ -622,8 +637,22 @@ function Wait-VmReady {
 			Write-Host "  Poll #$poll`: guest reachable but flag not yet written." -ForegroundColor DarkGray
 		}
 		catch {
-			# Expected during install / pre-OOBE / WinRM not yet up.
-			Write-Host "  Poll #$poll`: guest not yet reachable — OS install in progress..." -ForegroundColor DarkGray
+			if ($_.Exception.Message -like '*credential is invalid*') {
+				# WinRM is up, so the OS is at least at OOBE. SetupComplete.cmd
+				# may still be running and is what guarantees the test user/
+				# password match. Tolerate this for $CredentialGracePeriodMinutes
+				# before declaring the configuration broken.
+				if (-not $credBadSince) { $credBadSince = Get-Date }
+				$elapsedSec = [int]((Get-Date) - $credBadSince).TotalSeconds
+				if ($elapsedSec -ge ($CredentialGracePeriodMinutes * 60)) {
+					throw "Guest rejected the configured credentials for '$($Credential.UserName)' for $CredentialGracePeriodMinutes minutes. SetupComplete.cmd either did not run or did not create the test user with the expected password. Inspect C:\Setup\SetupComplete.log via vmconnect."
+				}
+				Write-Host "  Poll #$poll`: guest reachable but credentials not yet valid (SetupComplete still running? ${elapsedSec}s elapsed of $($CredentialGracePeriodMinutes * 60)s grace)." -ForegroundColor DarkYellow
+			}
+			else {
+				# Expected during install / pre-OOBE / WinRM not yet up.
+				Write-Host "  Poll #$poll`: guest not yet reachable — OS install in progress..." -ForegroundColor DarkGray
+			}
 		}
 		Start-Sleep -Seconds $PollIntervalSeconds
 	}

@@ -29,10 +29,20 @@ sealed class ProgressRenderer : IDisposable
 	static readonly IReadOnlyList<string> SpinnerFrames = Spinner.Known.Dots.Frames;
 	static readonly int FrameIntervalMs = (int)Spinner.Known.Dots.Interval.TotalMilliseconds;
 
-	// CSI "Erase in Line" — `ESC [ 2 K` clears the entire current line; `\r`
-	// returns the cursor to column 0. The ESC byte (\x1b) is essential — without
-	// it the terminal would just print the literal characters "[2K".
-	const string ClearLine = "\x1b[2K\r";
+	// In-place redraw without flicker:
+	//   `\r`           — move the cursor back to column 0 (does NOT erase anything;
+	//                    the previous frame stays on screen until we overwrite it)
+	//   {new content}  — overwrites the existing frame character-by-character
+	//   `\x1b[K`       — CSI "Erase in Line, to end" — clears any tail left over
+	//                    when a longer previous frame is replaced by a shorter one
+	// Critically, we do NOT use `\x1b[2K` (erase entire line) BEFORE writing —
+	// that leaves a visible blank between erase and write each frame, which is
+	// exactly the flicker the user reported.
+	const string CarriageReturn = "\r";
+	const string ClearToEnd = "\x1b[K";
+	// Final commit (✓/✗ line): erase the whole spinner line so AnsiConsole.MarkupLine
+	// starts on a clean slate and Spectre's own newline can print the permanent line.
+	const string EraseLineAndReturn = "\x1b[2K\r";
 	// CSI cursor-visibility toggles — DECTCEM. We hide the cursor while spinning
 	// so it doesn't blink at the next-write position behind the glyph.
 	const string HideCursor = "\x1b[?25l";
@@ -71,7 +81,10 @@ sealed class ProgressRenderer : IDisposable
 
 	void StartSpinner(string step, string detail)
 	{
-		if (!isInteractive) return;
+		if (!isInteractive)
+		{
+			return;
+		}
 
 		lock (@lock)
 		{
@@ -85,7 +98,10 @@ sealed class ProgressRenderer : IDisposable
 			{
 				lock (@lock)
 				{
-					if (currentStep is null) return; // already stopped
+					if (currentStep is null)
+					{
+						return; // already stopped
+					}
 					frameIndex = (frameIndex + 1) % SpinnerFrames.Count;
 					DrawFrameLocked();
 				}
@@ -102,7 +118,10 @@ sealed class ProgressRenderer : IDisposable
 			spinnerTimer = null;
 			if (currentStep is not null && isInteractive)
 			{
-				Console.Write(ClearLine);
+				// Now we DO want a full erase — the permanent ✓/✗ line is about to
+				// be printed by AnsiConsole.MarkupLine and we don't want any tail
+				// of the spinner frame to bleed through underneath it.
+				Console.Write(EraseLineAndReturn);
 			}
 			currentStep = null;
 			currentDetail = "";
@@ -113,25 +132,35 @@ sealed class ProgressRenderer : IDisposable
 
 	void DrawFrameLocked()
 	{
-		if (currentStep is null) return;
-		Console.Write(ClearLine);
-		// Bright green glyph + default-colour label so the spinner glyph pops; the
-		// detail piece carries its own grey style via FormatDetailMarkup.
+		if (currentStep is null)
+		{
+			return;
+		}
+		// In-place redraw: cursor to col 0, paint the new frame, clear any tail
+		// from a previous longer frame. No intermediate "blank line" state, so
+		// no flicker.
+		Console.Write(CarriageReturn);
 		AnsiConsole.Markup(
 			$"[green]{SpinnerFrames[frameIndex]}[/] {Markup.Escape(currentStep)}{FormatDetailMarkup(currentDetail)}");
+		Console.Write(ClearToEnd);
 	}
 
 	void HideCursorIfNeededLocked()
 	{
 		if (!isInteractive || cursorHidden)
+		{
 			return;
+		}
 		Console.Write(HideCursor);
 		cursorHidden = true;
 	}
 
 	void RestoreCursorIfNeededLocked()
 	{
-		if (!cursorHidden) return;
+		if (!cursorHidden)
+		{
+			return;
+		}
 		Console.Write(ShowCursor);
 		cursorHidden = false;
 	}

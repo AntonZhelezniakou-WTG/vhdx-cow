@@ -108,10 +108,19 @@ public sealed class GuestSession
 		return sb.ToString();
 	}
 
-	string CredPrelude() => $"""
-		$__guestPw = ConvertTo-SecureString '{Esc(_password)}' -AsPlainText -Force
-		$__guestCred = New-Object System.Management.Automation.PSCredential('{_vmName}\{Esc(_user)}', $__guestPw)
-		""";
+	string CredPrelude()
+	{
+		// Build SecureString without ConvertTo-SecureString: that cmdlet lives
+		// in Microsoft.PowerShell.Security, which sometimes fails to load when
+		// PowerShell is spawned as a subprocess with -NoProfile.
+		var appendChars = string.Concat(
+			_password.Select(c => $"\n\t$__guestPw.AppendChar('{Esc(c.ToString())}')"));
+		return $"""
+			$__guestPw = [System.Security.SecureString]::new(){appendChars}
+			$__guestPw.MakeReadOnly()
+			$__guestCred = [System.Management.Automation.PSCredential]::new('{_vmName}\{Esc(_user)}', $__guestPw)
+			""";
+	}
 
 	static string Esc(string s) => s.Replace("'", "''");
 }

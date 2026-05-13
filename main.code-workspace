@@ -5,6 +5,12 @@
 		}
 	],
 	"settings": {
-		"window.title": "vhdx-cow"
+		"window.title": "vhdx-cow",
+		"chat.tools.terminal.autoApprove": {
+			"/^powershell -NoProfile -ExecutionPolicy Bypass -File \"d:\\\\GitHub\\\\WiseTechGlobal\\\\Personal\\\\vhdx-manager\\\\scripts\\\\Bump-Version\\.ps1\"$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
 	}
 }

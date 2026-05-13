@@ -12,7 +12,7 @@
   Goals:
     * Skip every OOBE prompt (region, keyboard, MSA login, telemetry, ...).
     * Create a single local admin account (vhdxtest) for tests.
-    * Auto-logon that account once so FirstLogon.ps1 can run.
+    * Run FirstLogon.ps1 via SetupComplete.cmd under LocalSystem.
     * Bypass NRO so Win11 24H2 doesn't insist on a Microsoft account.
     * Use the Enterprise generic install key (NPPR9-...). Eval install does
       not need activation; this key only authorises the installer to proceed.
@@ -156,12 +156,23 @@
 				<!--
 					Copy our FirstLogon.ps1 from whichever DVD drive holds the
 					autounattend ISO (drive letter is not deterministic). The script
-					is then invoked from a stable C:\Setup path during oobeSystem.
+					is then invoked from a stable C:\Setup path by SetupComplete.cmd.
 				-->
 				<RunSynchronousCommand wcm:action="add">
 					<Order>2</Order>
 					<Path>cmd /c md C:\Setup &amp; for %i in (D E F G H) do if exist %i:\FirstLogon.ps1 copy /Y %i:\FirstLogon.ps1 C:\Setup\FirstLogon.ps1</Path>
 					<Description>Stage FirstLogon</Description>
+				</RunSynchronousCommand>
+				<!--
+					SetupComplete.cmd runs as LocalSystem before first interactive logon,
+					which avoids UAC/elevation differences in FirstLogonCommands. It
+					also promotes vhdxtest to Administrators, because Windows 11 24H2/
+					25H2 can ignore <LocalAccount><Group>Administrators</Group>.
+				-->
+				<RunSynchronousCommand wcm:action="add">
+					<Order>3</Order>
+					<Path>cmd /c md C:\Windows\Setup\Scripts &amp; for %i in (D E F G H) do if exist %i:\SetupComplete.cmd copy /Y %i:\SetupComplete.cmd C:\Windows\Setup\Scripts\SetupComplete.cmd</Path>
+					<Description>Stage SetupComplete</Description>
 				</RunSynchronousCommand>
 			</RunSynchronous>
 		</component>
@@ -190,6 +201,15 @@
 			</UserAccounts>
 			<AutoLogon>
 				<Username>vhdxtest</Username>
+				<!--
+					Explicit local <Domain> guards against AutoLogon ambiguity
+					on Win11 25H2 (build 26200+), where Microsoft has tightened
+					OOBE behaviour and dropped BypassNRO. Without a Domain the
+					provider has been observed to fall back to "Microsoft
+					account" logon flows and ignore the local account that the
+					<LocalAccounts> block created.
+				-->
+				<Domain>VHDXTEST</Domain>
 				<Password>
 					<Value>{PASSWORD}</Value>
 					<PlainText>true</PlainText>
@@ -208,13 +228,6 @@
 				<ProtectYourPC>3</ProtectYourPC>
 				<NetworkLocation>Work</NetworkLocation>
 			</OOBE>
-			<FirstLogonCommands>
-				<SynchronousCommand wcm:action="add">
-					<Order>1</Order>
-					<CommandLine>powershell -NoProfile -ExecutionPolicy Bypass -File C:\Setup\FirstLogon.ps1</CommandLine>
-					<Description>VhdxManager E2E first-boot</Description>
-				</SynchronousCommand>
-			</FirstLogonCommands>
 		</component>
 	</settings>
 </unattend>

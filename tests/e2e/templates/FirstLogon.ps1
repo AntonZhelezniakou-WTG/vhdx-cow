@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Runs once inside the freshly installed Win11 guest, on first auto-logon.
+  Runs once inside the freshly installed Win11 guest during SetupComplete.
 
 .DESCRIPTION
   Configures the VM for headless E2E testing:

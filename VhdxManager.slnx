@@ -8,7 +8,6 @@
 	<Folder Name="/tests/">
 		<Project Path="tests/VhdxManager.Cli.Tests/VhdxManager.Cli.Tests.csproj" />
 		<Project Path="tests/VhdxManager.Client.Tests/VhdxManager.Client.Tests.csproj" />
-		<Project Path="tests/VhdxManager.E2E.Tests/VhdxManager.E2E.Tests.csproj" />
 		<Project Path="tests/VhdxManager.Integration.Tests/VhdxManager.Integration.Tests.csproj" />
 		<Project Path="tests/VhdxManager.Service.Tests/VhdxManager.Service.Tests.csproj" />
 	</Folder>
